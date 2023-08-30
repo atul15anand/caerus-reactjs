@@ -1,0 +1,36 @@
+{
+    "version": "2.0.0",
+    "manifest_version": 3,
+    "name": "Caerus reactJS only bizjournals",
+    "description": "This is a Chrome extension built with ReactJS",
+    "action": {
+        "default_popup": "js/index.html",
+        "default_icon": {
+            "16": "assets/logo.png",
+            "32": "assets/logo.png"
+        },
+        "default_title": "News Data Scrapper"
+    },
+    "icons": {
+        "16": "assets/logo.png",
+        "32": "assets/logo.png"
+    },
+    "background":{
+        "service_worker": "js/background.js"
+    },
+    "permissions": ["tabs", "activeTab", "scripting", "webRequest", "cookies"],
+    "host_permissions": [
+        "https://news.almaconnect.com/",
+        "http://localhost:3000/"
+    ],
+    "content_scripts": [
+        {
+          "js": ["js/content.js"],
+          "matches": ["https://www.bizjournals.com/*"]
+        },
+        {
+          "js": ["js/articlecontent.js"],
+          "matches": ["https://www.bizjournals.com/*/news/2023/*"]
+        }
+    ]
+}

@@ -1,0 +1,157 @@
+.App {
+  color: white;
+  text-align: center;
+}
+
+.container {
+}
+
+:root {
+  --turqoise: #00C4B5;
+  --black: #282A2C;
+  --dark-grey: #707274;
+}
+body{
+  padding: 0;
+  margin: 0;
+  width: max-content;
+  font-size: 0px;
+}
+.popup_container{
+  padding: 16px;
+  width: 500px;
+}
+
+.flex-default{
+  display: flex;
+  justify-content: flex-start;
+}
+
+.flex-center{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.alma_button{
+  background-color: var(--turqoise);
+  padding: 8px;
+  color: white;
+  width: max-content;
+  border-radius: 4px;
+  font-size: 8px;
+}
+
+.alma_button:hover{
+  cursor: pointer;
+}
+
+.text_caption{ 
+  font-size: 8px;
+  color: var(--dark-grey);
+}
+
+.text_caption_bold{
+  font-weight: 700;
+  font-size: 8px;
+  color: var(--black);
+}
+
+.logo_image_animator{
+  animation: rotation 2s linear infinite;
+}
+
+@keyframes rotation{
+  20%{
+      transform: rotate(30deg);
+  }
+  80%{
+      transform: rotate(330deg);
+  }
+  100%{
+      transform: rotate(360deg);
+  }
+}
+
+body {
+  width: 320px;
+  height: 330px;
+  padding: 10px;
+}
+  
+ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+  
+li {
+  margin-bottom: 10px;
+}
+  
+a {
+  color: #337ab7;
+  text-decoration: none;
+}
+  
+a:hover {
+  text-decoration: underline;
+}
+  
+.popup_btn {
+  height: 40px;
+  width: 308px;
+  left: -153px;
+  top: -32px;
+  border-radius: 3px;
+  background-color: #00c4b5;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 19px;
+  border: 0px;
+  margin-top: 12px;
+  transition: background-color 0.2s ease-in-out;
+}
+  
+.popup_btn:active {
+  background-color: #008e7f;
+}
+  
+#closeButton {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  cursor: pointer;
+  font-size: 20px;
+  color: #555;
+}
+  
+#closeButton:hover {
+  color: black;
+}
+  
+.heading {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 25px;
+  text-align: left;
+}
+  
+.description {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 19px;
+  text-align: left;
+  margin-top: 11px;
+  margin-bottom: 5px;
+  color: #333;
+}
+  
+#message {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 19px;
+  text-align: left;
+  color: #555;
+}
