@@ -4,7 +4,7 @@ import './App.css';
 
 const Popup = () => {
   const handleFetchRssAndUrlsClick = () => {
-    chrome.runtime.sendMessage({ action: 'sendGetRssSourcesRequest' });
+    chrome.runtime.sendMessage({ action: 'getRssSourceAndSync' });
   };
 
   const handleFetchUrlsClick = () => {
