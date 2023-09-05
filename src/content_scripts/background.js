@@ -64,16 +64,22 @@ function getRssSourceToSync() {
 }
 
 function sendSharableArticleData(data, tabUrl) {
+  console.log("data is : ", data);
+  console.log("tabUrl : ", tabUrl);
   chrome.cookies.get({ url: main_url, name: "api_key" }, async function (cookie) {
     if (cookie) {
       const apiKey = cookie.value;
       data["api_key"] = apiKey;
       const url = karmabox_url + "/matching_articles/process_manual_sharable_article";
+      console.log("url is : ", url);
       const headers = {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`
       };
+      console.log("headers is : ", headers);
       const flagToClose = getParameterByName("flagToClose",data["content"]["link"]);
+      console.log("flag to close", flagToClose);
+      console.log("we are sending article data");
       data["content"]["last_rss_article"] = (urlsToOpen.length == 0 && flagToClose)? true : false;
       fetch(url, { method: "POST", body: JSON.stringify(data), headers })
         .then(async (response) => {
@@ -160,8 +166,8 @@ function fetchUrlsFromPrimaryPage(rss_source){
           if (response && response.links) {
             articleLinksData = response.links;
             console.log(response.links);
-            // chrome.tabs.remove(tabId, function () { });
-            createTabs([response.links[0]], false);
+            chrome.tabs.remove(tabId, function () { });
+            createTabs(response.links, false);
           }
         });
         isTabCreationInProgress = false; // Reset the flag after the tab creation is complete
@@ -209,6 +215,7 @@ function openNextTab(direct) {
     });
   }
   else{
+    getRssSourceToSync();
   }
 }
 

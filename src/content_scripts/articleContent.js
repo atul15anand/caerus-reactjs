@@ -75,9 +75,26 @@ function get_html_attr(html_attr, html_data){
 function buildQuery(link_data) {
   switch (link_data.query_selector) {
     case "getElementsByClassName":
-      let obj = [], temp = document.getElementsByClassName(link_data.query_value)
-      for(let i=0;i<link_data.token_number.length;i++){
-        obj.push(item[link_data.token_number[i]]);
+      let obj = [], temp = document.getElementsByClassName(link_data.query_value);
+      console.log("temp is : ", temp);
+      const index_list = link_data.token_number;
+      console.log("index list is : ", index_list);
+      console.log("condition is : ", (index_list.length > 0 && index_list[0] == -1));
+      if(index_list.length > 0 && index_list[0] == -1){
+        for(let i=0; i<temp.length; i++){
+          let value = get_html_attr(link_data.html_attribute, temp[i]);
+          if(value){
+            obj.push(value);
+          }
+        }
+      } else if(index_list.length >0) {
+        for(let i=0; i<link_data.token_number.length; i++){
+          let value = get_html_attr(link_data.html_attribute, temp[link_data.token_number[i]]);
+          console.log("value is : ", value);
+          if(value){
+            obj.push(value);
+          }
+        }
       }
       return obj.join(" ");
     case "getElementsByTagName":
@@ -88,7 +105,7 @@ function buildQuery(link_data) {
         let value = get_html_attr(link_data.html_attribute, item[link_data.token_number[i]].link_data);
         console.log("value is : ", value);
         if(value){
-          val.push(get_html_attr(link_data.html_attribute, item[link_data.token_number[i]].link_data));
+          val.push(value);
         }
       }
       return val.join(" ");
@@ -113,60 +130,44 @@ window.onload = function() {
 
       console.log(rss_obj);
       // const date = document.querySelector('meta[name="publish-date"]');
+      console.log("DATE");
       const date = buildQuery(rss_obj.published_at);
       let dateContent = date;
 
       console.log("dateContent : ", dateContent);
 
-      let titleText, image_url, baseUrl;
+      let image_url;
 
       let link = window.location.href;
-      const article_url = window.location.href.replace("?flatToClose=true","");
-      console.log("tab url is : ", article_url);
+      const article_url = link.replace("?flatToClose=true","");
 
+      console.log("TITLE");
       let title = null;
       for(let i=0;i<rss_obj.title.length; i++){
-        console.log(rss_obj.title[i]);
+        // console.log(rss_obj.title[i]);
         let title_line = buildQuery(rss_obj.title[i]);
-        console.log("title line is : ", title_line);
+        // console.log("title line is : ", title_line);
         title ||= title_line;
       }
       console.log("title is : ", title);
 
+      console.log("ARTICLE CONTENT");
+
       let article_content = null;
       for(let i=0;i<rss_obj.article_content.length;i++){
-        let content_line = buildQuery(rss_obj.article_content[i]);
-        // if(rss_obj.article_content)
-        let html_attr = rss_obj.article_content[i].html_attribute;
-        if(html_attr == "all"){
-          for(let j=0;j<content_line.length;j++){
-            article_content += content_line[j];
-          }
-        }
+        console.log("current query for article content : ", rss_obj.article_content[i]);
+        article_content ||= buildQuery(rss_obj.article_content[i]);
+        console.log("article content is: ", article_content);
       }
 
-      if(link.includes("/inno/")) {
-        let article_content_list = document.getElementsByClassName("article-content-item--paragraph");
-        let article_data = null;
-        for(let i=0; i< article_content_list.length; i++){
-          article_data += article_content_list[0];
-        }
-        article_content = article_data;
+      console.log("final article content is : ", article_content);
 
-        const image_data = document.getElementsByTagName("img")[0];
-        image_url = image_data ? image_data.src : null;
+      console.log("IMAGE URL");
+      for(let i=0;i<rss_obj.image_url.length;i++){
+        image_url ||= buildQuery(rss_obj.image_url[i]);
+        console.log("current image url is : ", image_url);
       }
-      else {
-        const content1 = document.getElementsByClassName("content")[0];
-        const content2 = document.getElementsByClassName("content")[2];
-        const contentText1 = content1 ? content1.innerText : "";
-        const contentText2 = content2 ? content2.innerText : "";
-        article_content = contentText1 + contentText2;
-
-        // getting image url from thumbnail
-        const image_data = document.querySelector('meta[property="og:image:secure_url"]');
-        image_url = image_data ? image_data.content : null;
-      }
+      console.log("image url is : ", image_url);
 
       const content = {
         article_url: article_url,
@@ -174,8 +175,11 @@ window.onload = function() {
         image_url: image_url,
         source: "bizjournals.com",
         published_at: dateContent,
-        title: titleText
+        title: title,
+        link: link
       };
+
+      console.log("CONTENT IS :", content);
 
       const data = {
         content: content,
