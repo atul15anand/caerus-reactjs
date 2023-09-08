@@ -40,10 +40,6 @@ module.exports = {
       },
     plugins: [
         new CopyPlugin({
-            // patterns: [
-            //     { from: "manifest.json", to: "../manifest.json" },
-                
-            // ],
             patterns:[{
                 from: path.resolve("src/static"),
                 to: path.resolve(`caerus-reactjs-${version.current}`),
