@@ -69,10 +69,14 @@ function get_html_attr(html_attr, html_data){
       return html_data.content;
     case "src":
       return html_data.src;
+    case "href":
+      return html_data.href;
   }
 }
 
 function buildQuery(link_data) {
+  console.log(link_data.query_selector);
+  console.log("buidl query");
   switch (link_data.query_selector) {
     case "getElementsByClassName":
       let obj = [], temp = document.getElementsByClassName(link_data.query_value);
@@ -118,20 +122,36 @@ function buildQuery(link_data) {
   }
 } 
 
+function buildDate(){
+  const currentDate = new Date();
+  const day = currentDate.getDate();
+  const month = currentDate.getMonth() + 1;
+  const year = currentDate.getFullYear();
+  const hours = currentDate.getHours();
+  const minutes = currentDate.getMinutes();
+  const seconds = currentDate.getSeconds();
+
+  const formattedDate = `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+  return formattedDate;
+}
+
 window.onload = function() {
 
   let rss_obj = null;
+  console.log("in this page");
   chrome.runtime.sendMessage({ action: "requestForRssSource" }, function(response) {
     console.log("Message sent to background script");
-    
-    if (response && response.data) {
+    console.log(response);
+    if (response && response.rss_data && response.selectors_data) {
       console.log("response is : ", response);
-      rss_obj = response.data;  
+      rss_obj = response.rss_data;  
+      selectors_data = response.selectors_data;
 
       console.log(rss_obj);
-      // const date = document.querySelector('meta[name="publish-date"]');
+      console.log(selectors_data);
+      
       console.log("DATE");
-      const date = buildQuery(rss_obj.published_at);
+      const date = buildQuery(selectors_data.published_at[0]) || buildDate();
       let dateContent = date;
 
       console.log("dateContent : ", dateContent);
@@ -143,9 +163,9 @@ window.onload = function() {
 
       console.log("TITLE");
       let title = null;
-      for(let i=0;i<rss_obj.title.length; i++){
+      for(let i=0;i<selectors_data.title_elements.length; i++){
         // console.log(rss_obj.title[i]);
-        let title_line = buildQuery(rss_obj.title[i]);
+        let title_line = buildQuery(selectors_data.title_elements[i]);
         // console.log("title line is : ", title_line);
         title ||= title_line;
       }
@@ -154,17 +174,17 @@ window.onload = function() {
       console.log("ARTICLE CONTENT");
 
       let article_content = null;
-      for(let i=0;i<rss_obj.article_content.length;i++){
-        console.log("current query for article content : ", rss_obj.article_content[i]);
-        article_content ||= buildQuery(rss_obj.article_content[i]);
+      for(let i=0;i<selectors_data.article_content.length;i++){
+        console.log("current query for article content : ", selectors_data.article_content[i]);
+        article_content ||= buildQuery(selectors_data.article_content[i]);
         console.log("article content is: ", article_content);
       }
 
       console.log("final article content is : ", article_content);
 
       console.log("IMAGE URL");
-      for(let i=0;i<rss_obj.image_url.length;i++){
-        image_url ||= buildQuery(rss_obj.image_url[i]);
+      for(let i=0;i<selectors_data.image_url.length;i++){
+        image_url ||= buildQuery(selectors_data.image_url[i]);
         console.log("current image url is : ", image_url);
       }
       console.log("image url is : ", image_url);
@@ -173,7 +193,6 @@ window.onload = function() {
         article_url: article_url,
         article_content: article_content,
         image_url: image_url,
-        source: "bizjournals.com",
         published_at: dateContent,
         title: title,
         link: link

@@ -6,6 +6,8 @@ let urlsToOpen = [];
 let newstabCreation = false;
 let isTabCreationInProgress = false;
 let rss_source = null;
+let data_selector_fields = null;
+let primary_urls = [];
 
 async function getMessage(request, sender, sendResponse) {
   if (request.action === "generateNewTabs") {
@@ -20,7 +22,7 @@ async function getMessage(request, sender, sendResponse) {
   else if(request.action === "requestForRssSource"){
     console.log("we are here to get rss data");
     console.log(rss_source);
-    sendResponse({ data: rss_source });
+    sendResponse({ rss_data: rss_source, selectors_data: data_selector_fields });
   }
 }
 
@@ -46,7 +48,10 @@ function getRssSourceToSync() {
           console.log("we got our rss source data");
           rss_source = data.data;
           console.log("rss source value is set , ", rss_source);
-          fetchUrlsFromPrimaryPage(data.data);
+          console.log("our response from manual article sync is : ", data);
+          data_selector_fields = data.data_selector_fields;
+          console.log("data selector fieds : ", data_selector_fields);
+          setPrimaryUrls();
         })
         .catch((error) => {
           console.log("An error occurred:", error);
@@ -152,28 +157,56 @@ async function createTabs(urls, direct) {
   setTimeout(() => openNextTab(direct), 1000)
 }
 
-function fetchUrlsFromPrimaryPage(rss_source){
-  console.log("we are here now");
-  let primary_url = rss_source.primary_url;
-  isTabCreationInProgress = true;
+function setPrimaryUrls(){
+  primary_urls = rss_source.primary_urls;
+  console.log("primary urls are : ", primary_urls);
+  fetchUrlsFromPrimaryPage();
+}
 
-  chrome.tabs.create({ url: primary_url }, function (tab) {
-    const tabId = tab.id;
-    chrome.tabs.onUpdated.addListener(function listener(updatedTabId, changeInfo, updatedTab) {
-      if (updatedTabId === tabId && changeInfo.status === "complete" && updatedTab.status === "complete") {
-        chrome.tabs.onUpdated.removeListener(listener);
-        chrome.tabs.sendMessage(tab.id, { action: "getLinks", link_data: rss_source.article_url, url_fetch_criteria: rss_source.url_fetch_criteria }, async (response) => {
-          if (response && response.links) {
-            articleLinksData = response.links;
-            console.log(response.links);
-            chrome.tabs.remove(tabId, function () { });
-            createTabs(response.links, false);
+function fetchUrlsFromPrimaryPage() {
+  if (primary_urls.length > 0) {
+    const newsfeed_url = primary_urls.shift();
+    console.log("primary url is:", newsfeed_url);
+    isTabCreationInProgress = true;
+
+    chrome.tabs.create({ url: newsfeed_url }, function (tab) {
+      const tabId = tab.id;
+      let responseReceived = false;
+
+      const waitForResponse = new Promise((resolve) => {
+        chrome.tabs.onUpdated.addListener(function listener(updatedTabId, changeInfo, updatedTab) {
+          if (!responseReceived && updatedTabId === tabId && changeInfo.status === "complete" && updatedTab.status === "complete") {
+            chrome.tabs.sendMessage(
+              tab.id,
+              { action: "getLinks", url_filter: rss_source.url_filter, url_fetch_criteria: data_selector_fields.url_fetch_criteria },
+              async (response) => {
+                if (response && response.links) {
+                  console.log("response from getLinks:", response);
+                  articleLinksData = response.links;
+                  console.log("links aa gae");
+                  console.log(response.links);
+                  createTabs(response.links, false);
+                } else {
+                  console.log("No response or links in response.");
+                }
+                responseReceived = true;
+                resolve(response); // Resolve the promise with the response
+              }
+            );
+
+            isTabCreationInProgress = false; // Reset the flag after the tab creation is complete
+            chrome.tabs.onUpdated.removeListener(listener);
           }
         });
-        isTabCreationInProgress = false; // Reset the flag after the tab creation is complete
-      }
+      });
+
+      waitForResponse.then((resolvedResponse) => {
+        console.log("Promise resolved with response:", resolvedResponse);
+      });
     });
-  });
+  } else {
+    // getRssSourceToSync();
+  }
 }
 
 function closeTab(url) {
@@ -215,7 +248,8 @@ function openNextTab(direct) {
     });
   }
   else{
-    getRssSourceToSync();
+    // getRssSourceToSync();
+    // fetchUrlsFromPrimaryPage();
   }
 }
 

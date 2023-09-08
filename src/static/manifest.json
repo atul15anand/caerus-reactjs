@@ -26,11 +26,13 @@
     "content_scripts": [
         {
           "js": ["js/content.js"],
-          "matches": ["https://www.bizjournals.com/*"]
+          "matches": ["https://www.bizjournals.com/*", "https://www.forbes.com/*", "https://nymag.com/*", "https://www.legacy.com/us/obituaries/coastalcourier/browse"]
         },
         {
           "js": ["js/articlecontent.js"],
-          "matches": ["https://www.bizjournals.com/*/news/2023/*"]
+          "matches": ["https://www.bizjournals.com/*/news/2023/*", "https://www.forbes.com/*", "https://nymag.com/*/20*", "https://www.legacy.com/us/obituaries/coastalcourier/name/*",
+                    "https://www.legacy.com/us/obituaries/*/name/*"
+                    ]
         }
     ]
 }
