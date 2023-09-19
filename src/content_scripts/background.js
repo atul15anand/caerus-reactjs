@@ -269,7 +269,7 @@ function openNextTab() {
     closePrimaryUrl(3000); 
     setTimeout(() => {
       fetchUrlsFromPrimaryPage();
-    }, 1000);
+    }, 2000);
   }
 }
 

@@ -1,7 +1,7 @@
 {
     "version": "2.0.1",
     "manifest_version": 3,
-    "name": "Caerus reactJS only bizjournals",
+    "name": "Caerus reactJS Generic",
     "description": "This is a Chrome extension built with ReactJS",
     "action": {
         "default_popup": "js/index.html",

@@ -10,13 +10,18 @@ function getMessage(request, sender, sendResponse) {
       rss_sources_url.push(rssSourceUrl);
       localStorage.setItem("rss_sources_url", JSON.stringify(rss_sources_url));
     }
+    // addMessageToDOM("Rss Source not found." + "Add "+ rssSourceUrl, "red");
     sendResponse({data: true});
   }
   else if(request.action === "dataMissingMessage") {
     let emptyKey = Object.keys(request.data).filter(key => (request.data[key] === "" || request.data[key] == null));
+    let msg = emptyKey + " missing, request cannot be processed"
     sendResponse({data: true});
   }
   else if (request.action === "cookieMissingError") {
+    sendResponse({data: true});
+  }
+  else if(request.action == "duplicateData"){
     sendResponse({data: true});
   }
   else if(request.action == "fetchLocalData"){
@@ -62,7 +67,7 @@ function get_html_attr(html_attr, html_data){
 
 function buildQuery(link_data) {
   console.log(link_data.query_selector);
-  console.log("build query");
+  console.log("buidl query");
   switch (link_data.query_selector) {
     case "getElementsByClassName":
       let obj = [], temp = document.getElementsByClassName(link_data.query_value);
@@ -132,9 +137,9 @@ window.onload = function() {
 
   setTimeout(() => {
     window.location.reload();
-  }, 5000);
+  }, 5000); // in case article
   let rss_obj = null;
-  console.log("INSIDE article content");
+  console.log("in this page");
   chrome.runtime.sendMessage({ action: "requestForRssSource" }, function(response) {
     console.log("Message sent to background script");
     console.log(response);
@@ -154,10 +159,13 @@ window.onload = function() {
         console.log("date query is : ", date);
       }
 
+      // const date = buildQuery(selectors_data.published_at[0]) || buildDate();
       let dateContent = date;
+
       console.log("dateContent : ", dateContent);
 
       let image_url;
+
       let link = window.location.href;
       const article_url = link.replace(/[?&]flagToClose=true/g, '');
 
@@ -175,7 +183,9 @@ window.onload = function() {
 
       let article_content = null;
       for(let i=0;i<selectors_data.article_content.length;i++){
+        console.log("current query for article content : ", selectors_data.article_content[i]);
         article_content ||= buildQuery(selectors_data.article_content[i]);
+        console.log("article content is: ", article_content);
       }
 
       console.log("final article content is : ", article_content);
@@ -183,6 +193,7 @@ window.onload = function() {
       console.log("IMAGE URL");
       for(let i=0;i<selectors_data.image_url.length;i++){
         image_url ||= buildQuery(selectors_data.image_url[i]);
+        console.log("current image url is : ", image_url);
       }
       console.log("image url is : ", image_url);
 
