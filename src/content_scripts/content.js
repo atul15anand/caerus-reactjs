@@ -72,99 +72,82 @@ function buildQuery(link_data) {
       return list_all;
   }
 }
-
-function getMessage(request, sender, sendResponse) {
-
-  if (request.action === "getLinks") {
-    const storedUrlsData = JSON.parse(localStorage.getItem("articleLinksData")) || [];
-    console.log(request);
-    getArticleLinks(request.url_fetch_criteria, request.url_filter, storedUrlsData)
+  
+  function getMessage(request, sender, sendResponse) {
+  
+    if (request.action === "getLinks") {
+      const storedLinksData = JSON.parse(localStorage.getItem('articleLinksData')) || [];
+      console.log('request aae hai :', request);
+      getArticleLinks(request.url_fetch_criteria, request.url_filter, storedLinksData)
       .then(links => {
-        console.log("links are : ", links);
-        sendResponse({ links: links });
+        console.log("links are in content: ", links);
+        const filteredLinks = links.filter(link => !storedLinksData.includes(link));
+        console.log("filtered links are : ", filteredLinks);
+        sendResponse({ links: filteredLinks });
       })
       .catch(error => {
         console.error("Error fetching links: ", error);
-        sendResponse({ error: "An error occurred while fetching links." });
+        sendResponse({ error: "An error occurred while fetching links. fron content.js" });
       });
-  }
-  else if(request.action === "clearConfirmedUrls"){
-    let updatedLinksData = [];
-    localStorage.setItem("articleLinksData", JSON.stringify(updatedLinksData));
-    localStorage.setItem("rss_sources_url", JSON.stringify(updatedLinksData));
-  }
-  else if(request.action === "fetchRssSources") {
-    const storedRssData = JSON.parse(localStorage.getItem("rss_sources_url")) || [];
-    const storedUrlsData = JSON.parse(localStorage.getItem("articleLinksData")) || [];
-    sendResponse({data: storedRssData});
-  }
-}
-function scrollToBottomSmoothly() {
-  const totalHeight = document.body.scrollHeight;
-  const windowHeight = window.innerHeight;
-  const scrollStep = 40; // Adjust the scroll step as needed
-  const scrollInterval = 10; // Adjust the scroll interval as needed
-
-  let currentScroll = 0;
-
-  function scroll() {
-    if (currentScroll < totalHeight) {
-      window.scrollBy(0, scrollStep);
-      currentScroll += scrollStep;
-      setTimeout(scroll, scrollInterval);
     }
-  }
-  scroll();
-}
-
-function performPreAction(step) {
-  console.log("pre action perform");
-  switch (step.pre_action) {
-    case "scroll":
-      scrollToBottomSmoothly();
-      break;
-  }
-}
-
-function extractUrlAndParams(url) {
-  try {
-    const parts = url.split('#');
-    return parts[0];
-  } catch (error) {
-    return url;
-  }
-}
-
-async function getArticleLinks(url_fetch_criteria, url_filter, storedUrlsData) {
-  console.log("we are here to fetch all the links");
-  let links = new Set();
-
-  async function fetchLinks() {
-    for (let i = 0; i < url_fetch_criteria.length; i++) {
-      let step = url_fetch_criteria[i];
-      if (step.pre_action != null) {
-        performPreAction(step);
-      } else {
-        await new Promise(resolve => {
-          setTimeout(() => {
-            const inter_data = buildQuery(url_fetch_criteria[i]);
-            console.log("inter data :", inter_data);
-            inter_data.forEach(link => {
-              links.add(extractUrlAndParams(link));
-            });
-            resolve();
-          }, 20000); // Delay each iteration by 20 seconds (adjust as needed)
-        });
+    else if(request.action === "clearConfirmedUrls"){
+      let updatedLinksData = [];
+      localStorage.setItem("articleLinksData", JSON.stringify(updatedLinksData));
+      localStorage.setItem("rss_sources_url", JSON.stringify(updatedLinksData));
+    }
+    else if(request.action === "fetchRssSources") {
+      const storedRssData = JSON.parse(localStorage.getItem("rss_sources_url")) || [];
+      const storedUrlsData = JSON.parse(localStorage.getItem("articleLinksData")) || [];
+      sendResponse({data: storedRssData});
+    }
+    else if(request.action === "storeConfirmedUrl") {
+      console.log("store confirmed");
+      const storedLinksData = JSON.parse(localStorage.getItem('articleLinksData')) || [];
+      console.log("links already :", storedLinksData);
+      const urlToStore = request.url.replace(/[?&]flagToClose=true/g, '');
+      console.log("modified url is :", urlToStore);
+      if (!storedLinksData.includes(urlToStore)) {
+        const updatedLinksData = [...storedLinksData, urlToStore];
+        localStorage.setItem('articleLinksData', JSON.stringify(updatedLinksData));
       }
+      if(request.message) {
+      }
+      sendResponse({data: true});
     }
   }
+  
+  function getArticleLinks(url_fetch_criteria, url_filter, storedLinksData) {
+    console.log("we are inside this");
+    return new Promise((resolve, reject) => {
+      const currentHostname = window.location.hostname;
+      let query,links = new Set(), temp;
+      console.log("url fetch criteria :", url_fetch_criteria);
+      console.log("url filter is :", url_filter);
+      if(url_fetch_criteria != null){
+        for(let i=0;i<url_fetch_criteria.length;i++){
+          temp = buildQuery(url_fetch_criteria[i]);
+          console.log("after build query : ", temp);
+          temp = new Set(temp);
+          temp = Array.from(temp);
+          temp = temp.filter(item => item !== window.location.href);
+        }
+      }else {
+        temp = document.querySelectorAll("a");
+        query = Array.from(temp).map((x) => x.href);
+        links = new Set(
+          query.filter((cleanlink) => {
+            const link = new URL(cleanlink);
+            return link.hostname === currentHostname && (url_filter ? cleanlink.includes(url_filter) : true);
+          })
+        );
+      }
+      query = temp;
+      console.log(query);
+      if (query) {
+        console.log("after links ", query);
+      }
+      resolve(Array.from(query));
+    });
+  }
 
-  await fetchLinks();
-
-  console.log("url filter is ", url_filter);
-  const filteredLinks = [...links].filter(link => link.includes(url_filter));
-  console.log("filtered links:", filteredLinks);
-  return filteredLinks;
-}
-
-chrome.runtime.onMessage.addListener(getMessage);
+  chrome.runtime.onMessage.addListener(getMessage);

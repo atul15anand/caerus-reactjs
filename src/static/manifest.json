@@ -1,5 +1,5 @@
 {
-    "version": "2.0.0",
+    "version": "2.0.1",
     "manifest_version": 3,
     "name": "Caerus reactJS only bizjournals",
     "description": "This is a Chrome extension built with ReactJS",
@@ -18,7 +18,7 @@
     "background":{
         "service_worker": "js/background.js"
     },
-    "permissions": ["tabs", "activeTab", "scripting", "webRequest", "cookies"],
+    "permissions": ["tabs", "activeTab", "scripting", "webRequest", "cookies", "storage"],
     "host_permissions": [
         "https://news.almaconnect.com/",
         "http://localhost:3000/"
@@ -26,13 +26,27 @@
     "content_scripts": [
         {
           "js": ["js/content.js"],
-          "matches": ["https://www.bizjournals.com/*", "https://www.forbes.com/*", "https://nymag.com/*", "https://www.legacy.com/us/obituaries/coastalcourier/browse"]
+          "matches": 
+          [
+            "https://www.bizjournals.com/*", 
+            "https://www.legacy.com/category/news/celebrity-deaths/",
+            "https://www.sciencealert.com/environment"
+          ]
         },
         {
           "js": ["js/articlecontent.js"],
-          "matches": ["https://www.bizjournals.com/*/news/2023/*", "https://www.forbes.com/*", "https://nymag.com/*/20*", "https://www.legacy.com/us/obituaries/coastalcourier/name/*",
-                    "https://www.legacy.com/us/obituaries/*/name/*"
-                    ]
+          "matches": [
+            "*://*/*?flagToClose=true",
+            "*://*/*&flagToClose=true"
+          ]
+        },
+        {
+          "js": ["js/legacy_content.js"],
+          "matches":
+          [
+            "*://*/*/today",
+            "*://*/*/browse"
+          ]
         }
     ]
 }

@@ -2,7 +2,7 @@ const path = require("path");
 const HTMLPlugin = require("html-webpack-plugin");
 const CopyPlugin = require("copy-webpack-plugin")
 const version = {
-    current: "2.0.0"
+    current: "2.0.1"
 }
 
 module.exports = {
@@ -10,7 +10,8 @@ module.exports = {
         index: "./src/index.js",
         background: path.resolve('src/content_scripts/background.js'),
         content: path.resolve('src/content_scripts/content.js'),
-        articleContent: path.resolve('src/content_scripts/articleContent.js')
+        articleContent: path.resolve('src/content_scripts/articleContent.js'),
+        legacy_content: path.resolve('src/content_scripts/legacy_content.js')
     },
     mode: "production",
     module: {
