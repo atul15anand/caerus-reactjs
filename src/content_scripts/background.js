@@ -8,7 +8,7 @@ let isTabCreationInProgress = false;
 let rss_source = null;
 let data_selector_fields = null;
 let primary_urls = [];
-let current_primary_url= null;
+let current_primary_url= null; 
 
 async function getMessage(request, sender, sendResponse) {
   if (request.action === "generateNewTabs") {
@@ -35,6 +35,7 @@ async function getMessage(request, sender, sendResponse) {
   }
 }
 
+// Function to get Manual Article Sync
 function getRssSourceToSync() {
   chrome.cookies.get({ url: main_url, name: "api_key" }, async function (cookie) {
     if (cookie) {
@@ -56,22 +57,123 @@ function getRssSourceToSync() {
         .then((data) => {
           rss_source = data.data;
           data_selector_fields = data.data_selector_fields;
+          console.log("data selector fields are : ",data_selector_fields);
           setPrimaryUrls();
         })
         .catch((error) => {
           console.log("An error occurred:", error);
         });
     } else {
-      console.log("Cannot retrieve cookie!");
-      chrome.tabs.query({active: true, currentWindow: true}, function (tabs) {
-        const tab = tabs[0];
-        if (tab && tab.url) {
-          chrome.tabs.sendMessage(tab.id, { action: "cookieMissingError" });
-        }
-      });
+      console.log("Cannot retrieve Cookie!");
     }
   });
 }
+
+function setPrimaryUrls(){
+  primary_urls = rss_source.primary_urls;
+  fetchUrlsFromPrimaryPage();
+}
+
+function fetchUrlsFromPrimaryPage() {
+  console.log("Current Primary urls are :", primary_urls.length);
+  if (primary_urls.length > 0 && urlsToOpen.length === 0) {
+    if(isTabCreationInProgress){
+      return;
+    }
+    current_primary_url = primary_urls.shift();
+    isTabCreationInProgress = true;
+    
+    // Moving the tab creation logic inside a separate function
+    function createPrimaryTab() {
+      chrome.tabs.create({ url: current_primary_url }, function (tab) {
+        const tabId = tab.id;
+        let listenerActive = true;
+        chrome.tabs.onUpdated.addListener(function listener(updatedTabId, changeInfo, updatedTab) {
+          if (!listenerActive) {
+            return;
+          }
+          if (updatedTabId === tabId && changeInfo.status === "complete" && updatedTab.status === "complete") {
+            let timer = 0;
+            setTimeout(() => {
+              chrome.tabs.sendMessage(tab.id, {action: "getLoadInfo"},
+              async (response) => {
+                console.log("Load state is : ", response);
+                if(!response.fullyLoaded){
+                  timer = 60000;
+                }
+                setTimeout(() => {
+                  chrome.tabs.sendMessage(
+                    tab.id,
+                    { action: "getLinks", url_filter: rss_source.url_filter, url_fetch_criteria: data_selector_fields.url_fetch_criteria },
+                    async (response) => {
+                      console.log("Response from articles:", response);
+                      if (response && response.links) {
+                        articleLinksData = response.links;
+                        current_primary_url = response.primary_url;
+                        console.log(response.links);
+                        if (articleLinksData.length === 0) {
+                          console.log("ZERO links");
+                          closePrimaryUrl(0);
+                          setTimeout(() => {
+                            fetchUrlsFromPrimaryPage();
+                          }, 5000);
+                        } else {
+                          createTabs(response.links);
+                        }
+                      } else {
+                        console.log("No response or links in response.");
+                        primary_urls.push(current_primary_url);
+                        console.log("We pushed primary again:", current_primary_url);
+                        closePrimaryUrl(0);
+                        setTimeout(() => {
+                          fetchUrlsFromPrimaryPage();
+                        }, 30000);
+                      }
+                    }
+                  );
+                  isTabCreationInProgress = false;
+                  listenerActive = false;
+                  chrome.tabs.onUpdated.removeListener(listener);
+                }, timer);
+              })
+            }, 5000);
+          }
+        });
+      });
+    }
+    createPrimaryTab();
+  } else {
+    scheduleCurrentManualArticleSync();
+    setTimeout(() => {
+      getRssSourceToSync();
+    }, 2000);
+  }
+}
+
+function scheduleCurrentManualArticleSync() {
+  console.log("schedule method");
+  chrome.cookies.get({ url: main_url, name: "api_key" }, async function (cookie) {
+    if (cookie) {
+      const apiKey = cookie.value;
+      let data = {"api_key": apiKey};
+      const url = karmabox_url + "/rss_sources/schedule_current_manual_article_sync";
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      };
+      fetch(url, { method: "POST", body: JSON.stringify(data), headers })
+        .then(async (response) => {
+          console.log(response);
+        })
+        .catch((error) => {
+          console.log("An error occurred:", error);
+        })
+    } else {
+      console.log("Cannot retrieve Cookie!");
+    }
+  });
+}
+
 
 function sendSharableArticleData(data, tabUrl) {
   chrome.cookies.get({ url: main_url, name: "api_key" }, async function (cookie) {
@@ -83,8 +185,6 @@ function sendSharableArticleData(data, tabUrl) {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`
       };
-      const flagToClose = getParameterByName("flagToClose",data["content"]["link"]);
-      data["content"]["last_rss_article"] = (primary_urls.length == 0 && urlsToOpen.length == 0 && flagToClose)? true : false;
       fetch(url, { method: "POST", body: JSON.stringify(data), headers })
         .then(async (response) => {
           console.log(response);
@@ -96,6 +196,7 @@ function sendSharableArticleData(data, tabUrl) {
                 closeTab(tab.url);
               }
             });
+            openNextTab();
           } else if (response.status == 500) {
             chrome.tabs.query({ url: tabUrl }, async (tabs) => {
               const tab = tabs[0];
@@ -104,6 +205,7 @@ function sendSharableArticleData(data, tabUrl) {
                 chrome.tabs.sendMessage(tab.id, { action: "storeRssSourceNotFound", data: data.content.rss_source_url, url: tab.url });
               }
             });
+            openNextTab();
           } else if (response.status == 409){
             chrome.tabs.query({ url: tabUrl }, async (tabs) => {
               const tab = tabs[0];
@@ -112,42 +214,33 @@ function sendSharableArticleData(data, tabUrl) {
                 closeTab(tab.url);
               }
             });
+            openNextTab();
           }
           else {
             chrome.tabs.query({ url: tabUrl }, async (tabs) => {
               const tab = tabs[0];
               if (tab && tab.url) {
-                chrome.tabs.sendMessage(tab.id, { action: "dataMissingMessage", data: data.content, url: tab.url }, function (response) {
-                  if (response) {
-                    closeTab(tabUrl);
-                  } else {
-                    console.log("No response from content script.");
-                  }
-                });
+                chrome.tabs.sendMessage(tab.id, { action: "dataMissingMessage", data: data.content, url: tab.url });
               }
-            });            
+            });         
           }
         })
         .catch((error) => {
           console.log("An error occurred:", error);
           openNextTab(); // Proceed to the next tab even if there's an error
-        });
+        })
     } else {
-      console.log("Cannot retrieve cookie!");
-      chrome.tabs.query({ url: tabUrl }, async (tabs) => {
-        const tab = tabs[0];
-        if (tab && tab.url) {
-          chrome.tabs.sendMessage(tab.id, { action: "cookieMissingError" });
-        }
-      });
+      console.log("Cannot retrieve Cookie!");
     }
   });
 }
 
 function storeConfirmedURL(article_url) {
+  console.log("current primary url : ", current_primary_url);
   chrome.tabs.query({ url: current_primary_url }, async (tabs) => {
     const tab = tabs[0];
     if (tab && tab.url) {
+      console.log("storing processed url");
       chrome.tabs.sendMessage(tab.id, { action: "storeConfirmedUrl", url: article_url });
     }
   });
@@ -159,70 +252,9 @@ function getParameterByName(name, url) {
 }
 
 async function createTabs(urls) {
-  urlsToOpen = urls
+  urlsToOpen = urls;
   newstabCreation = false;
-  setTimeout(() => openNextTab(), 1000)
-}
-
-function setPrimaryUrls(){
-  primary_urls = rss_source.primary_urls;
-  fetchUrlsFromPrimaryPage();
-}
-
-function fetchUrlsFromPrimaryPage() {
-  console.log("now primary urls are :", primary_urls.length);
-  if (primary_urls.length > 0) {
-    current_primary_url = primary_urls.shift();
-    isTabCreationInProgress = true;
-
-      chrome.tabs.create({ url: current_primary_url }, function (tab) {
-        const tabId = tab.id;
-        let responseReceived = false;
-
-        const waitForResponse = new Promise((resolve) => {
-          chrome.tabs.onUpdated.addListener(function listener(updatedTabId, changeInfo, updatedTab) {
-            if (!responseReceived && updatedTabId === tabId && changeInfo.status === "complete" && updatedTab.status === "complete") {
-              chrome.tabs.sendMessage(
-                tab.id,
-                { action: "getLinks", url_filter: rss_source.url_filter, url_fetch_criteria: data_selector_fields.url_fetch_criteria },
-                async (response) => {
-                  console.log("resposne from articles : ",response);
-                  if (response && response.links) {
-                    articleLinksData = response.links;
-                    current_primary_url = response.primary_url;
-                    console.log(response.links);
-                    if(articleLinksData.length == 0){
-                      console.log("ZERO links--------");
-                      closePrimaryUrl(0);
-                      fetchUrlsFromPrimaryPage();
-                    }else {
-                      createTabs(response.links);
-                    }
-                  } else {
-                    console.log("No response or links in response.");
-                    primary_urls.push(current_primary_url);
-                    console.log("we pushed primary again");
-                    console.log("now primary urls are : ", primary_urls);
-                    closePrimaryUrl(0);
-
-                    fetchUrlsFromPrimaryPage();
-                  }
-                  responseReceived = true;
-                  resolve(response); // Resolve the promise with the response
-                }
-              );
-              isTabCreationInProgress = false; // Reset the flag after the tab creation is complete
-              chrome.tabs.onUpdated.removeListener(listener);
-            }
-          });
-        });
-        waitForResponse.then((resolvedResponse) => {
-          console.log("Promise resolved with response:", resolvedResponse);
-        });
-      });
-  } else {
-    getRssSourceToSync();
-  }
+  setTimeout(() => openNextTab(), 1000);
 }
 
 function closeTab(url) {
@@ -257,19 +289,16 @@ function openNextTab() {
       chrome.tabs.onUpdated.addListener(function listener(updatedTabId, changeInfo, updatedTab) {
         if (updatedTabId === tabId && changeInfo.status === "complete" && updatedTab.status === "complete") {
           chrome.tabs.onUpdated.removeListener(listener);
-          chrome.tabs.get(tabId, function (tab) {
-            newstabCreation = false;
-            openNextTab();
-          });
+          newstabCreation = false;
         }
       });
     });
   }
   else{
-    closePrimaryUrl(3000); 
+    closePrimaryUrl(2000);
     setTimeout(() => {
       fetchUrlsFromPrimaryPage();
-    }, 2000);
+    }, 5000);
   }
 }
 
@@ -278,8 +307,9 @@ function closePrimaryUrl(timeout) {
     const tab = tabs[0];
     if (tab && tab.url) {
       setTimeout(() => {
+        console.log("closing the tab");
         chrome.tabs.remove(tab.id);
-      }, 1000); // 3 seconds (3000 milliseconds) timeout
+      }, timeout); // 3 seconds (3000 milliseconds) timeout
     }
   });
 }

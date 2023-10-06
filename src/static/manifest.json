@@ -1,5 +1,5 @@
 {
-    "version": "2.0.1",
+    "version": "2.0.2",
     "manifest_version": 3,
     "name": "Caerus reactJS Generic",
     "description": "This is a Chrome extension built with ReactJS",
@@ -28,16 +28,27 @@
           "js": ["js/content.js"],
           "matches": 
           [
-            "https://www.bizjournals.com/*", 
+            "https://www.bizjournals.com/*",
             "https://www.legacy.com/category/news/celebrity-deaths/",
-            "https://www.sciencealert.com/environment"
+            "https://www.sciencealert.com/environment",
+            
+            "https://www.siliconvalley.com/news/",
+            "https://www.siliconvalley.com/business/",
+            "https://www.siliconvalley.com/business/technology/", 
+            "https://www.siliconvalley.com/tag/housing/",
+            "https://www.siliconvalley.com/tag/commercial-real-estate/",
+            
+            "https://www.vulture.com/art/",
+            "https://nymag.com/strategist/travel/",
+
+            "https://www.bustle.com/"
           ]
         },
         {
           "js": ["js/articlecontent.js"],
           "matches": [
-            "*://*/*?flagToClose=true",
-            "*://*/*&flagToClose=true"
+            "*://*/*?flagToClose=true*",
+            "*://*/*&flagToClose=true*"
           ]
         },
         {

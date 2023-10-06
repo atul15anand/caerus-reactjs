@@ -103,6 +103,19 @@ function getMessage(request, sender, sendResponse) {
     }
     sendResponse({data: true});
   }
+  else if(request.action === "getLoadInfo"){
+    let pageText = document.body.innerText;
+    if(pageText.includes("Checking if the site connection is secure")){
+      sendResponse({fullyLoaded: false});
+    } else{
+      sendResponse({fullyLoaded: true});
+    }
+    return true;
+  }
+}
+
+function isValidURL(url) {
+  return /\?id=/i.test(url) && /[a-zA-Z]-[a-zA-Z]/.test(url);
 }
 
 async function fetchArticleLinksAndSendResponse(url_fetch_criteria, url_filter, sendResponse) {
@@ -111,13 +124,10 @@ async function fetchArticleLinksAndSendResponse(url_fetch_criteria, url_filter, 
   if (links && links.length > 0) {
     const storedLinksData = JSON.parse(localStorage.getItem('articleLinksData')) || [];
     links = links.filter(link => !storedLinksData.includes(link));  // mandatory to send links variable only
+    links = links.filter(url => isValidURL(url));
     sendResponse({ links, primary_url: window.location.href });
   } else {
-    console.log("No links found. Waiting for 12 seconds and retrying...");
-    setTimeout(async () => {
-      const retryLinks = await getArticleLinks(url_fetch_criteria, url_filter);
-      sendResponse({ links: retryLinks || [], primary_url: window.location.href });
-    }, 12000); // Wait for 12 seconds before retrying
+    sendResponse({ links: [], primary_url: window.location.href });
   }
 }
 function scrollToBottomSmoothly() {
@@ -159,10 +169,15 @@ function extractUrlAndParams(url) {
 async function getArticleLinks(url_fetch_criteria, url_filter) {
   console.log("we are here to fetch all the links");
 
-  let v = document.querySelector('script[type="application/json"][data-hypernova-key="ListingPage"]') || document.querySelector('script[type="application/json"][data-hypernova-key="CommunityPage"]');
-  v = v.textContent;
-  jsonContent = v.substring(4, v.length - 3);
-  let j_v= JSON.parse(jsonContent);
+  let j_v=null,v = document.querySelector('script[type="application/json"][data-hypernova-key="ListingPage"]') || document.querySelector('script[type="application/json"][data-hypernova-key="CommunityPage"]');
+  if(v){
+    v = v.textContent || "";
+    if(v){
+      let jsonContent = v.substring(4, v.length - 3) || null;
+      j_v= JSON.parse(jsonContent);
+    }
+  }
+
   const obituaryLinks = [];
 
   if (j_v && j_v.obituaryList && j_v.obituaryList.obituaries) {

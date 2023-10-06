@@ -62,6 +62,8 @@ function get_html_attr(html_attr, html_data){
       return html_data.href;
     case "textContent":
       return html_data.textContent;
+    default:
+      return html_data.getAttribute(html_attr)
   }
 }
 
@@ -134,85 +136,121 @@ function buildDate(){
 }
 
 window.onload = function() {
+  const rootElement = document.documentElement;
 
-  setTimeout(() => {
-    window.location.reload();
-  }, 5000); // in case article
-  let rss_obj = null;
-  console.log("in this page");
-  chrome.runtime.sendMessage({ action: "requestForRssSource" }, function(response) {
-    console.log("Message sent to background script");
-    console.log(response);
-    if (response && response.rss_data && response.selectors_data) {
-      console.log("response is : ", response);
-      rss_obj = response.rss_data;  
-      selectors_data = response.selectors_data;
+  console.log("root elementis ", rootElement);
+  // Check if the page contains the text "Checking if the site connection is secure"
+  const pageText = rootElement.innerText || rootElement.textContent;
+  const isConnectionSecure = pageText.includes("Checking if the site connection is secure");
+  console.log("isConnectionSecure is :", isConnectionSecure);
+  let timeoutValue = 0; // Default timeout value
 
-      console.log(rss_obj);
-      console.log(selectors_data);
-      
-      console.log("DATE");
-
-      let date = null;
-      for(let i=0;i<selectors_data.published_at.length;i++){
-        date ||= buildQuery(selectors_data.published_at[i]);
-        console.log("date query is : ", date);
-      }
-
-      // const date = buildQuery(selectors_data.published_at[0]) || buildDate();
-      let dateContent = date;
-
-      console.log("dateContent : ", dateContent);
-
-      let image_url;
-
-      let link = window.location.href;
-      const article_url = link.replace(/[?&]flagToClose=true/g, '');
-
-      console.log("TITLE");
-      let title = null;
-      for(let i=0;i<selectors_data.title_elements.length; i++){
-        // console.log(rss_obj.title[i]);
-        let title_line = buildQuery(selectors_data.title_elements[i]);
-        // console.log("title line is : ", title_line);
-        title ||= title_line;
-      }
-      console.log("title is : ", title);
-
-      console.log("ARTICLE CONTENT");
-
-      let article_content = null;
-      for(let i=0;i<selectors_data.article_content.length;i++){
-        console.log("current query for article content : ", selectors_data.article_content[i]);
-        article_content ||= buildQuery(selectors_data.article_content[i]);
-        console.log("article content is: ", article_content);
-      }
-
-      console.log("final article content is : ", article_content);
-
-      console.log("IMAGE URL");
-      for(let i=0;i<selectors_data.image_url.length;i++){
-        image_url ||= buildQuery(selectors_data.image_url[i]);
-        console.log("current image url is : ", image_url);
-      }
-      console.log("image url is : ", image_url);
-
-      const content = {
-        article_url: article_url,
-        article_content: article_content,
-        image_url: image_url,
-        published_at: dateContent,
-        title: title,
-        link: link
-      };
-
-      console.log("CONTENT IS :", content);
-
-      const data = {
-        content: content,
-      };
-      // Send the message to the background script
-      chrome.runtime.sendMessage({ action: "sendInfoFromArticle", data: data, url: window.location.href });
+  // If the page contains the text, perform specific actions
+  if (isConnectionSecure) {
+    // Check for a button and click it (if present)
+    const buttonElement = document.querySelector('button'); // Modify the selector as needed
+    console.log("button element is :", buttonElement);
+    if (buttonElement) {
+      console.log("inside button");
+      buttonElement.click();
     }
-  });
+
+    // Check for a checkbox and mark it as checked (if present)
+    const checkboxElement = document.querySelector('input[type="hidden"][name="cf-turnstile-response"]');// Modify the selector as needed
+    console.log("checkboxElement : ",checkboxElement);
+    if (checkboxElement) {
+      console.log("checkbox inside :", checkboxElement);
+      checkboxElement.checked = true;
+    }
+
+    // Set a shorter timeout if the conditions are met
+    timeoutValue = 15000; // 15 seconds
+  }
+  
+  setTimeout(() => {
+    setTimeout(() => {
+      window.location.reload();
+    }, 5000); // in case article is not closed
+    let rss_obj = null;
+    console.log("in this page");
+    chrome.runtime.sendMessage({ action: "requestForRssSource" }, function(response) {
+      console.log("Message sent to background script");
+      console.log(response);
+      if (response && response.rss_data && response.selectors_data) {
+        console.log("response is : ", response);
+        rss_obj = response.rss_data;  
+        selectors_data = response.selectors_data;
+
+        console.log(rss_obj);
+        console.log(selectors_data);
+        
+        console.log("DATE");
+
+        let date = null;
+        for(let i=0;i<selectors_data.published_at.length;i++){
+          date ||= buildQuery(selectors_data.published_at[i]);
+          console.log("date query is : ", date);
+        }
+
+        // const date = buildQuery(selectors_data.published_at[0]) || buildDate();
+        let dateContent = date;
+
+        console.log("dateContent : ", dateContent);
+
+        let image_url;
+
+        let link = window.location.href;
+        const article_url = link.replace(/[?&]flagToClose=true/g, '');
+
+        console.log("TITLE");
+        let title = null;
+        for(let i=0;i<selectors_data.title_elements.length; i++){
+          // console.log(rss_obj.title[i]);
+          let title_line = buildQuery(selectors_data.title_elements[i]);
+          // console.log("title line is : ", title_line);
+          title ||= title_line;
+        }
+        console.log("title is : ", title);
+
+        console.log("ARTICLE CONTENT");
+
+        let article_content = null;
+        for(let i=0;i<selectors_data.article_content.length;i++){
+          console.log("current query for article content : ", selectors_data.article_content[i]);
+          article_content ||= buildQuery(selectors_data.article_content[i]);
+          console.log("article content is: ", article_content);
+        }
+
+        console.log("final article content is : ", article_content);
+
+        console.log("IMAGE URL");
+        for(let i=0;i<selectors_data.image_url.length;i++){
+          image_url ||= buildQuery(selectors_data.image_url[i]);
+          console.log("current image url is : ", image_url);
+        }
+        console.log("image url is : ", image_url);
+
+        const content = {
+          article_url: article_url,
+          article_content: article_content || "No Content",
+          image_url: image_url || "https://picsum.photos/id/0/5000/3333",
+          published_at: dateContent,
+          title: title,
+          link: link
+        };
+
+        console.log("CONTENT IS :", content);
+        if (!content.title || !content.published_at) {
+          // Reload the page
+          window.location.reload();
+        }
+        const data = {
+          content: content,
+        };
+        // Send the message to the background script
+
+        chrome.runtime.sendMessage({ action: "sendInfoFromArticle", data: data, url: window.location.href });
+      }
+    });
+  }, timeoutValue);
 };

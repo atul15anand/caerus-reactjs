@@ -76,19 +76,20 @@ function buildQuery(link_data) {
   function getMessage(request, sender, sendResponse) {
   
     if (request.action === "getLinks") {
+      
       const storedLinksData = JSON.parse(localStorage.getItem('articleLinksData')) || [];
       console.log('request aae hai :', request);
       getArticleLinks(request.url_fetch_criteria, request.url_filter, storedLinksData)
-      .then(links => {
-        console.log("links are in content: ", links);
-        const filteredLinks = links.filter(link => !storedLinksData.includes(link));
-        console.log("filtered links are : ", filteredLinks);
-        sendResponse({ links: filteredLinks });
-      })
-      .catch(error => {
-        console.error("Error fetching links: ", error);
-        sendResponse({ error: "An error occurred while fetching links. fron content.js" });
-      });
+        .then(links => {
+          console.log("links are in content: ", links);
+          links = links.filter(link => !storedLinksData.includes(link));
+          console.log("filtered links are : ", links);
+          sendResponse({ links, primary_url: window.location.href });
+        })
+        .catch(error => {
+          console.error("Error fetching links: ", error);
+          sendResponse({ error: "An error occurred while fetching links. from content.js" });
+        });
     }
     else if(request.action === "clearConfirmedUrls"){
       let updatedLinksData = [];
@@ -110,9 +111,16 @@ function buildQuery(link_data) {
         const updatedLinksData = [...storedLinksData, urlToStore];
         localStorage.setItem('articleLinksData', JSON.stringify(updatedLinksData));
       }
-      if(request.message) {
-      }
       sendResponse({data: true});
+    }
+    else if(request.action === "getLoadInfo"){
+      let pageText = document.body.innerText;
+      if(pageText.includes("Checking if the site connection is secure")){
+        sendResponse({fullyLoaded: false});
+      } else{
+        sendResponse({fullyLoaded: true});
+      }
+      return true;
     }
   }
   
@@ -131,6 +139,7 @@ function buildQuery(link_data) {
           temp = Array.from(temp);
           temp = temp.filter(item => item !== window.location.href);
         }
+        query = temp;
       }else {
         temp = document.querySelectorAll("a");
         query = Array.from(temp).map((x) => x.href);
@@ -140,8 +149,8 @@ function buildQuery(link_data) {
             return link.hostname === currentHostname && (url_filter ? cleanlink.includes(url_filter) : true);
           })
         );
+        query = links;
       }
-      query = temp;
       console.log(query);
       if (query) {
         console.log("after links ", query);
