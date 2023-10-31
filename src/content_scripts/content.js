@@ -14,6 +14,8 @@ function get_html_attr(html_attr, html_data){
       return html_data.src;
     case "href":
       return html_data.href;
+    case "dateTime":
+      return html_data.dateTime
   }
 }
 

@@ -8,7 +8,7 @@ let isTabCreationInProgress = false;
 let rss_source = null;
 let data_selector_fields = null;
 let primary_urls = [];
-let current_primary_url= null; 
+let current_primary_url= null;
 
 async function getMessage(request, sender, sendResponse) {
   if (request.action === "generateNewTabs") {
@@ -174,7 +174,6 @@ function scheduleCurrentManualArticleSync() {
   });
 }
 
-
 function sendSharableArticleData(data, tabUrl) {
   chrome.cookies.get({ url: main_url, name: "api_key" }, async function (cookie) {
     if (cookie) {
@@ -309,7 +308,7 @@ function closePrimaryUrl(timeout) {
       setTimeout(() => {
         console.log("closing the tab");
         chrome.tabs.remove(tab.id);
-      }, timeout); // 3 seconds (3000 milliseconds) timeout
+      }, timeout);
     }
   });
 }

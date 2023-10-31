@@ -62,6 +62,8 @@ function get_html_attr(html_attr, html_data){
       return html_data.href;
     case "textContent":
       return html_data.textContent;
+    case "dateTime":
+      return html_data.dateTime
     default:
       return html_data.getAttribute(html_attr)
   }

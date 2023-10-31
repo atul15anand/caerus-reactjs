@@ -56,7 +56,8 @@
           "matches":
           [
             "*://*/*/today",
-            "*://*/*/browse"
+            "*://*/*/browse",
+            "https://www.legacy.com/us/communities/*"
           ]
         }
     ]
