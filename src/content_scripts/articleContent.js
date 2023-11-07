@@ -113,7 +113,11 @@ function buildQuery(link_data) {
     case "querySelector":
       let result = get_html_attr(link_data.html_attribute, document.querySelector(link_data.query_value));
       if(link_data.json_parse == true){
-        let json_data= JSON.parse(result);
+        let json_data= JSON.parse(result) || null;
+        console.log("json data is : ", json_data);
+        if(link_data.token_number.length>0 && link_data.token_number[0]!= -1){
+          json_data = json_data[link_data.token_number[0]]
+        }
         if(json_data){
           return json_data[link_data.json_value];
         }
@@ -244,7 +248,9 @@ window.onload = function() {
         console.log("CONTENT IS :", content);
         if (!content.title || !content.published_at) {
           // Reload the page
-          window.location.reload();
+          setTimeout(() => {
+            window.location.reload();
+          }, 3000); // in case article is not closed
         }
         const data = {
           content: content,

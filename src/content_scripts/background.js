@@ -9,6 +9,7 @@ let rss_source = null;
 let data_selector_fields = null;
 let primary_urls = [];
 let current_primary_url= null;
+let urlHash = {};
 
 async function getMessage(request, sender, sendResponse) {
   if (request.action === "generateNewTabs") {
@@ -188,6 +189,7 @@ function sendSharableArticleData(data, tabUrl) {
         .then(async (response) => {
           console.log(response);
           if (response.ok) {
+            createTabs(urlsToOpen);
             chrome.tabs.query({ url: tabUrl }, function (tabs) {
               const tab = tabs[0];
               if (tab && tab.url) {
@@ -195,33 +197,51 @@ function sendSharableArticleData(data, tabUrl) {
                 closeTab(tab.url);
               }
             });
-            openNextTab();
+            console.log("going to open new");
+            // openNextTab();
           } else if (response.status == 500) {
-            chrome.tabs.query({ url: tabUrl }, async (tabs) => {
-              const tab = tabs[0];
-              if (tab && tab.url) {
-                closeTab(tabUrl);
-                chrome.tabs.sendMessage(tab.id, { action: "storeRssSourceNotFound", data: data.content.rss_source_url, url: tab.url });
-              }
-            });
-            openNextTab();
+            if(urlHash[tabUrl]){
+              urlHash[tabUrl]++;
+            }
+            else{
+              urlHash[tabUrl]=1;
+            }
+            console.log("we are here to 422");
+            console.log("count is : ", urlHash[tabUrl]);
+            if(urlHash[tabUrl] > 1){
+              storeConfirmedURL(tabUrl);
+              closeTab(tabUrl);
+              createTabs(urlsToOpen);
+              urlHash={};
+            }
           } else if (response.status == 409){
+            createTabs(urlsToOpen);
             chrome.tabs.query({ url: tabUrl }, async (tabs) => {
               const tab = tabs[0];
               if (tab && tab.url) {
                 storeConfirmedURL(tab.url);
                 closeTab(tab.url);
+                // openNextTab();
               }
             });
-            openNextTab();
+            console.log("going to open new");
+            // openNextTab();
           }
           else {
-            chrome.tabs.query({ url: tabUrl }, async (tabs) => {
-              const tab = tabs[0];
-              if (tab && tab.url) {
-                chrome.tabs.sendMessage(tab.id, { action: "dataMissingMessage", data: data.content, url: tab.url });
-              }
-            });         
+            if(urlHash[tabUrl]){
+              urlHash[tabUrl]++;
+            }
+            else{
+              urlHash[tabUrl]=1;
+            }
+            console.log("we are here to 422");
+            console.log("count is : ", urlHash[tabUrl]);
+            if(urlHash[tabUrl] > 2){
+              storeConfirmedURL(tabUrl);
+              closeTab(tabUrl);
+              createTabs(urlsToOpen);
+              urlHash={};
+            }      
           }
         })
         .catch((error) => {
@@ -261,9 +281,7 @@ function closeTab(url) {
     const tab = tabs[0];
     if (tab && tab.url) {
       const flagToClose = getParameterByName("flagToClose", tab.url);
-      if (flagToClose === "true") {
         chrome.tabs.remove(tab.id, function () {});
-      }
     }
   });
 }

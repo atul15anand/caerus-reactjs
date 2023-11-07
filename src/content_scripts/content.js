@@ -133,7 +133,8 @@ function buildQuery(link_data) {
       let query,links = new Set(), temp;
       console.log("url fetch criteria :", url_fetch_criteria);
       console.log("url filter is :", url_filter);
-      if(url_fetch_criteria != null){
+      if(url_fetch_criteria.length !== 0){
+        console.log("Inside First");
         for(let i=0;i<url_fetch_criteria.length;i++){
           temp = buildQuery(url_fetch_criteria[i]);
           console.log("after build query : ", temp);
@@ -143,14 +144,15 @@ function buildQuery(link_data) {
         }
         query = temp;
       }else {
+        console.log("we are 2nd");
         temp = document.querySelectorAll("a");
+        console.log("temp is : ", temp);
         query = Array.from(temp).map((x) => x.href);
-        links = new Set(
-          query.filter((cleanlink) => {
-            const link = new URL(cleanlink);
-            return link.hostname === currentHostname && (url_filter ? cleanlink.includes(url_filter) : true);
-          })
-        );
+        console.log("query is : ", query);
+        let links = query.filter((link) => link.includes(url_filter));
+        links = new Set(links);
+        links = Array.from(links);
+        console.log("links are : ", links);
         query = links;
       }
       console.log(query);
