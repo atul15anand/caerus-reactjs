@@ -1,0 +1,5 @@
+"https://www.thedailybeast.com/obsessed",
+"https://www.thedailybeast.com/",
+"https://www.thedailybeast.com/category/*",
+"https://www.thedailybeast.com/keyword/gift-guide",
+"https://www.thedailybeast.com/franchise/*"

@@ -10,6 +10,7 @@ let data_selector_fields = null;
 let primary_urls = [];
 let current_primary_url= null;
 let urlHash = {};
+const accessToken = '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';
 
 async function getMessage(request, sender, sendResponse) {
   if (request.action === "generateNewTabs") {
@@ -26,14 +27,34 @@ async function getMessage(request, sender, sendResponse) {
   else if(request.action === "requestForRssSource"){
     sendResponse({ rss_data: rss_source, selectors_data: data_selector_fields });
   }
-  else if(request.action === "fetchConfirmedUrls"){
-    console.log("we are trying to get confirmed urls");
-    chrome.storage.local.get({ confirmedURLs: [] }, function (data) {
-      const confirmedURLs = data.confirmedURLs;
-      sendResponse({links: confirmedURLs});
-    });
-    return true;
+  else if(request.action === "stopNewsSync") {
+    console.log("Stopping News Sync");
+    primary_urls = [];
+    current_primary_url = null;
+    resetData();
   }
+}
+
+function resetData() {
+  chrome.cookies.get({ url: main_url, name: "api_key" }, async function (cookie) {
+    if (cookie) {
+      const apiKey = cookie.value;
+      let data = {"api_key": apiKey};
+      const url = karmabox_url + "/rss_sources/disable_manual_article_sync";
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      };
+      fetch(url, { method: "POST", body: JSON.stringify(data), headers })
+        .then(async (response) => {
+        })
+        .catch((error) => {
+          console.log("An error occurred:", error);
+        })
+    } else {
+      console.log("Cannot retrieve Cookie!");
+    }
+  });
 }
 
 // Function to get Manual Article Sync
@@ -75,18 +96,98 @@ function setPrimaryUrls(){
   fetchUrlsFromPrimaryPage();
 }
 
+function getFilteredLinks(urls, current_primary_url) {
+  return new Promise((resolve, reject) => {
+    
+    let new_url = current_primary_url;
+    if(new_url.includes("flagToClose")){
+      new_url = new_url.slice(0,-17);
+    }
+    console.log("FILTERING url : ", new_url);
+    const p_url = new_url.replace(/:\/\//g, '_').replace(/\./g, '_').replace(/\//g, '_');
+    const apiUrl = `https://api.github.com/repos/atul15anand/Urls-Storage/contents/${p_url}.md`;
+
+    console.log("api is : ", apiUrl);
+
+    const fetchOptions = {
+      method: 'GET',
+      headers: {
+        'Authorization': `token ${accessToken}`,
+      },
+    };
+
+    fetch(apiUrl, fetchOptions)
+      .then(response => {
+        if (response.ok) {
+          return response.json();
+        } else if (response.status === 404) {
+          // File does not exist, create it
+          return createFile(p_url);
+        } else {
+          throw new Error(`Failed to fetch file. Status: ${response.status}`);
+        }
+      })
+      .then(data => {
+        const existingContent = data.content.length > 6 ? atob(data.content) : "https://www.google.com";
+        let storedUrls;
+        try {
+          storedUrls = existingContent ? existingContent.split(",") : [];
+        } catch (splitError) {
+          console.error('Error splitting existing content:', splitError);
+          storedUrls = [];
+        }
+        const filteredUrls = urls.filter(url => !storedUrls.includes(url));
+        resolve(filteredUrls);
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        reject(error); // Reject the Promise with an error
+      });
+  });
+}
+
+function createFile(fileName) {
+
+  if(fileName.includes("flagToClose")){
+    fileName = fileName.slice(0, -17)
+  }
+  const apiUrl = 'https://api.github.com/repos/atul15anand/Urls-Storage/contents/';
+  const content = "https://www.google.com"; // You can provide initial content for the new file if needed
+
+  const fetchOptions = {
+    method: 'PUT',
+    headers: {
+      'Authorization': `token ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message: `Create ${fileName}.md`,
+      content: btoa(content),
+    }),
+  };
+
+  return fetch(apiUrl + `${fileName}.md`, fetchOptions)
+    .then(response => {
+      if (response.ok) {
+        return response.json();
+      } else {
+        throw new Error(`Failed to create file. Status: ${response.status}`);
+      }
+    });
+}
+
 function fetchUrlsFromPrimaryPage() {
-  console.log("Current Primary urls are :", primary_urls.length);
   if (primary_urls.length > 0 && urlsToOpen.length === 0) {
     if(isTabCreationInProgress){
       return;
     }
     current_primary_url = primary_urls.shift();
     isTabCreationInProgress = true;
+    let new_url = buildUrl(current_primary_url);
     
     // Moving the tab creation logic inside a separate function
     function createPrimaryTab() {
-      chrome.tabs.create({ url: current_primary_url }, function (tab) {
+      chrome.tabs.create({ url: new_url }, function (tab) {
         const tabId = tab.id;
         let listenerActive = true;
         chrome.tabs.onUpdated.addListener(function listener(updatedTabId, changeInfo, updatedTab) {
@@ -98,33 +199,40 @@ function fetchUrlsFromPrimaryPage() {
             setTimeout(() => {
               chrome.tabs.sendMessage(tab.id, {action: "getLoadInfo"},
               async (response) => {
-                console.log("Load state is : ", response);
                 if(!response.fullyLoaded){
                   timer = 60000;
                 }
                 setTimeout(() => {
                   chrome.tabs.sendMessage(
                     tab.id,
-                    { action: "getLinks", url_filter: rss_source.url_filter, url_fetch_criteria: data_selector_fields.url_fetch_criteria },
+                    { action: "getLinks", url_filter: rss_source.url_filter, url_fetch_criteria: data_selector_fields.url_fetch_criteria, website_data: current_primary_url },
                     async (response) => {
                       console.log("Response from articles:", response);
                       if (response && response.links) {
-                        articleLinksData = response.links;
+                        console.log("we are here");
                         current_primary_url = response.primary_url;
-                        console.log(response.links);
-                        if (articleLinksData.length === 0) {
-                          console.log("ZERO links");
-                          closePrimaryUrl(0);
-                          setTimeout(() => {
-                            fetchUrlsFromPrimaryPage();
-                          }, 5000);
-                        } else {
-                          createTabs(response.links);
-                        }
+                        getFilteredLinks(response.links, current_primary_url)
+                        .then(filteredUrls => {
+                          if (filteredUrls.length === 0) {
+                            console.log("ZERO links");
+                            closePrimaryUrl(0);
+                            setTimeout(() => {
+                              fetchUrlsFromPrimaryPage();
+                            }, 5000);
+                          } else {
+                            closePrimaryUrl(0);
+                            console.log("now here");
+                            setTimeout(() => {
+                              createTabs(filteredUrls);
+                            }, 5000);
+                          }
+                        })
+                        .catch(error => {
+                          console.error("Error while filtering links:", error);
+                          // Handle the error here
+                        });
                       } else {
-                        console.log("No response or links in response.");
                         primary_urls.push(current_primary_url);
-                        console.log("We pushed primary again:", current_primary_url);
                         closePrimaryUrl(0);
                         setTimeout(() => {
                           fetchUrlsFromPrimaryPage();
@@ -164,7 +272,6 @@ function scheduleCurrentManualArticleSync() {
       };
       fetch(url, { method: "POST", body: JSON.stringify(data), headers })
         .then(async (response) => {
-          console.log(response);
         })
         .catch((error) => {
           console.log("An error occurred:", error);
@@ -193,39 +300,32 @@ function sendSharableArticleData(data, tabUrl) {
             chrome.tabs.query({ url: tabUrl }, function (tabs) {
               const tab = tabs[0];
               if (tab && tab.url) {
-                storeConfirmedURL(tab.url);
                 closeTab(tab.url);
+                storeConfirmedURL(tab.url);
               }
             });
-            console.log("going to open new");
-            // openNextTab();
-          } else if (response.status == 500) {
+          } else if (response.status === 500) {
             if(urlHash[tabUrl]){
               urlHash[tabUrl]++;
             }
             else{
               urlHash[tabUrl]=1;
             }
-            console.log("we are here to 422");
-            console.log("count is : ", urlHash[tabUrl]);
             if(urlHash[tabUrl] > 1){
-              storeConfirmedURL(tabUrl);
               closeTab(tabUrl);
+              storeConfirmedURL(tabUrl);
+              delete urlHash[tabUrl];
               createTabs(urlsToOpen);
-              urlHash={};
             }
-          } else if (response.status == 409){
+          } else if (response.status === 409){
             createTabs(urlsToOpen);
             chrome.tabs.query({ url: tabUrl }, async (tabs) => {
               const tab = tabs[0];
               if (tab && tab.url) {
-                storeConfirmedURL(tab.url);
                 closeTab(tab.url);
-                // openNextTab();
+                storeConfirmedURL(tab.url);
               }
             });
-            console.log("going to open new");
-            // openNextTab();
           }
           else {
             if(urlHash[tabUrl]){
@@ -234,13 +334,12 @@ function sendSharableArticleData(data, tabUrl) {
             else{
               urlHash[tabUrl]=1;
             }
-            console.log("we are here to 422");
-            console.log("count is : ", urlHash[tabUrl]);
-            if(urlHash[tabUrl] > 2){
-              storeConfirmedURL(tabUrl);
+            if(urlHash[tabUrl] >= 2){
+              console.log("tab url is : ", tabUrl);
               closeTab(tabUrl);
+              storeConfirmedURL(tabUrl);
               createTabs(urlsToOpen);
-              urlHash={};
+              delete urlHash[tabUrl];
             }      
           }
         })
@@ -255,19 +354,81 @@ function sendSharableArticleData(data, tabUrl) {
 }
 
 function storeConfirmedURL(article_url) {
-  console.log("current primary url : ", current_primary_url);
-  chrome.tabs.query({ url: current_primary_url }, async (tabs) => {
-    const tab = tabs[0];
-    if (tab && tab.url) {
-      console.log("storing processed url");
-      chrome.tabs.sendMessage(tab.id, { action: "storeConfirmedUrl", url: article_url });
-    }
-  });
-}
+  if (article_url.includes("?flagToClose=true") || article_url.includes("&flagToClose=true")) {
+    article_url = article_url.slice(0, -17);
+  }
 
-function getParameterByName(name, url) {
-  const searchParams = new URLSearchParams(new URL(url).search);
-  return searchParams.get(name);
+  let new_url = current_primary_url;
+  if(new_url.includes("flagToClose")){
+    new_url = new_url.slice(0,-17);
+  }
+  console.log("STORING url is : ", new_url);
+  const p_url = new_url.replace(/:\/\//g, '_').replace(/\./g, '_').replace(/\//g, '_');
+  const apiUrl = `https://api.github.com/repos/atul15anand/Urls-Storage/contents/${p_url}.md`;
+
+  console.log("Storing api is : ", apiUrl);
+  const fetchOptions = {
+    method: 'GET',
+    headers: {
+      'Authorization': `token ${accessToken}`,
+    },
+  };
+
+  fetch(apiUrl, fetchOptions)
+    .then(response => {
+      if (response.ok) {
+        return response.json();
+      } else if (response.status === 404) {
+        // File does not exist, create it
+        console.log("File not found. Creating a new file.");
+        return createFile(p_url);
+      } else {
+        throw new Error(`Failed to fetch file. Status: ${response.status}`);
+      }
+    })
+    .then(data => {
+      if (data.content) {
+        let existingContent = atob(data.content); // Decode base64 content
+        console.log("currently there are : ", existingContent.split(",").length + " urls");
+        try {
+          let urlArray = existingContent.split(",");
+          if (urlArray.length > 800) {
+            urlArray = urlArray.slice(0, 200).concat(urlArray.slice(400));
+          }
+          existingContent = urlArray.join(",");
+        } catch (error) {
+          console.error("An error occurred:", error.message);
+        }
+        const newContent = article_url; // Update with the content you want to append
+        const appendedContent = existingContent + ',' + newContent;
+
+        const updateOptions = {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: 'Append content to file ' + article_url,
+            content: btoa(appendedContent), // Encode the concatenated content in base64
+            sha: data.sha,
+          }),
+        };
+
+        fetch(apiUrl, updateOptions)
+          .then(updateResponse => {
+            if (updateResponse.ok) {
+              console.log('File content appended successfully.');
+            } else {
+              console.error('Failed to append content to the file. Status:', updateResponse.status);
+            }
+          })
+          .catch(updateError => console.error('Error updating file:', updateError));
+      } else {
+        console.error('File content not retrieved.');
+      }
+    })
+    .catch(error => console.error('Error fetching file:', error));
 }
 
 async function createTabs(urls) {
@@ -277,10 +438,10 @@ async function createTabs(urls) {
 }
 
 function closeTab(url) {
+  url = url.split("#")[0];
   chrome.tabs.query({ url: url }, function (tabs) {
     const tab = tabs[0];
     if (tab && tab.url) {
-      const flagToClose = getParameterByName("flagToClose", tab.url);
         chrome.tabs.remove(tab.id, function () {});
     }
   });
@@ -299,9 +460,10 @@ function openNextTab() {
       return;
     }
     newstabCreation = true;
-    const url = urlsToOpen.shift();
-    const modifiedUrl =  buildUrl(url);
-    chrome.tabs.create({ url: modifiedUrl }, function (tab) {
+    let url = urlsToOpen.shift();
+    url = url.split('#')[0];
+    console.log("url is : ", url);
+    chrome.tabs.create({ url: url }, function (tab) {
       const tabId = tab.id;
       chrome.tabs.onUpdated.addListener(function listener(updatedTabId, changeInfo, updatedTab) {
         if (updatedTabId === tabId && changeInfo.status === "complete" && updatedTab.status === "complete") {

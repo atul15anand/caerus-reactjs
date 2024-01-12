@@ -22,6 +22,13 @@ const Popup = () => {
     });
   };
 
+  const handleStopSync = () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      const [tab] = tabs;
+      chrome.tabs.sendMessage(tab.id, { action: "stopNewsSync" });
+    });
+  };
+
   const handleClearLocalDataClick = () => {
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
       // Send message to content script
@@ -44,17 +51,16 @@ const Popup = () => {
       <button className="popup_btn" onClick={handleFetchRssAndUrlsClick} id="fetchRssAndUrls">
         Fetch Rss Sources for News
       </button>
-
-      <div className="description">
-        Click on the button below to fetch article links and data
-      </div>
-
-      <button className="popup_btn" onClick={handleFetchUrlsClick} id="fetchUrlsButton">
-        Fetch Article Data
-      </button>
-
+      
       <div className="description">
         Click the button below to clear local data
+      </div>
+      
+      <button className="popup_btn" onClick={handleStopSync} id="stopSyncMas">
+        Stop News Sync 
+      </button>
+      <div className="description">
+        Click the button to stop the sync
       </div>
 
       <button

@@ -79,30 +79,6 @@ function getMessage(request, sender, sendResponse) {
     fetchArticleLinksAndSendResponse(request.url_fetch_criteria, request.url_filter, sendResponse);
     return true;
   }
-  else if(request.action === "clearConfirmedUrls"){
-    let updatedLinksData = [];
-    localStorage.setItem("articleLinksData", JSON.stringify(updatedLinksData));
-    localStorage.setItem("rss_sources_url", JSON.stringify(updatedLinksData));
-  }
-  else if(request.action === "fetchRssSources") {
-    const storedRssData = JSON.parse(localStorage.getItem("rss_sources_url")) || [];
-    const storedUrlsData = JSON.parse(localStorage.getItem("articleLinksData")) || [];
-    sendResponse({data: storedRssData});
-  }
-  else if(request.action === "storeConfirmedUrl") {
-    console.log("store confirmed");
-    const storedLinksData = JSON.parse(localStorage.getItem('articleLinksData')) || [];
-    console.log("links already :", storedLinksData);
-    const urlToStore = request.url.replace(/[?&]flagToClose=true/g, '');
-    console.log("modified url is :", urlToStore);
-    if (!storedLinksData.includes(urlToStore)) {
-      const updatedLinksData = [...storedLinksData, urlToStore];
-      localStorage.setItem('articleLinksData', JSON.stringify(updatedLinksData));
-    }
-    if(request.message) {
-    }
-    sendResponse({data: true});
-  }
   else if(request.action === "getLoadInfo"){
     let pageText = document.body.innerText;
     if(pageText.includes("Checking if the site connection is secure")){
@@ -201,11 +177,11 @@ async function getArticleLinks(url_fetch_criteria, url_filter) {
 
 window.onload = function() {
   console.log("we are inside this");
-  if (window.location.href.endsWith("/today")) {
-    // Redirect to the "/browse" page by replacing "/today" with "/browse"
+  if (window.location.href.includes("/today")) {
+    // Replace "/today" with "/browse"
     const newUrl = window.location.href.replace("/today", "/browse");
     window.location.href = newUrl;
-  }
+}
 }
 
 chrome.runtime.onMessage.addListener(getMessage);
