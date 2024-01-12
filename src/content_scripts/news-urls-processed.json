@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "news-urls-processed",
+  "private_key_id": "bfbdbab0c2f4e0c6681abac98e2d51405c31dc4a",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDKe+3qUZUVYlL+\nyCKVCx1IXe8/etIVvLnpvjt8FoXDn+Bl2K94c0d1RCmrhcFHDbYYmaOyvJeOu5j5\nza4alRHOVwKfbZtWQoCQFDbTyblzbMCVaUlt4KfD+gWNF2gleumgpEMfjoIbsGPS\nMTubq3UlKzrY1+waXqRQBlVDAPF3qKE5nw7HAsZGMHkWKlww+2yHH/Gs5M72Kcsz\n6oMxbo3csuKQwq8og3dJkIaWLpVZFpYWA4WPFLcZ5mVNhjvixLLyqAiUZPZLeJv5\nyVt0FbJ+Wq6ArL8XBAxckwnIfLaLScSV4LXi8FqCwW0C+kCns3XenZvWK2ogfvkB\nA/5NUz/tAgMBAAECggEAOdkxLh4TtTHLm13LP4CW45tupFivF6W9CbIfJYL7wVl2\nTzKaYxOwSSjprMbAYs/gg+O1GHX36L/g4xFnmdGX7jb+mVTDqd/DAia8SUKbGIZr\n+OPFJj6mP3+5QUd8KiUVBR+Yy7W3pzh8NEt7h6xzAeT5YYVCv3/lerVse4GT+wav\n6sGaSk5rN+IFQUeU9O2ugE0BCPDRHE48wDJwLZOvkHmowi2+e7MUg/BHqrVJoa15\nV2dGab5xm+nCH9hdtid4CqQJyLrv66Aq8JvjBQ/NsWx4LvKnQhgiJK/hdWtG4+L8\n9nlk0xDsLB1o6LdjQoRkjO4MrlZzjF0FIs24ylFCowKBgQD+wzJlgWzy8rul/UIa\nV+ZFw1ajcRnLgjHXyjYDx4PtBkazwYXL390es+TEzXyQH7gmZZBePduWJbI945WQ\nUWKqpTw+mhnCdIBI7Fs9LX1gyFMXBlpjoCaYEkvZXvWTpWOWzctX3uOsGJVVZSmF\nMZeU3FhogxjotAg9mK3aAQJITwKBgQDLd7kcepdewzFgIGwwNAm/2BcVsqiGBLPa\nd9HLB7iqnICNSjBuCOEwscViileENZnC/dlhNQE3ZkiKFMX0vmJPXxQEtHbns+KA\ngOCqgNRKcqDJGNaALclDabDQsxOjn7ZTm4T3Wu+W53Jjz/1tsw18z6xb8o/g6MLQ\nRkJj7hxpAwKBgQCvHI6sdLzldXEEFEN2hgqy0yTfLSOU3cXS1JwyFtaYemLotdF4\npESCERbjK3c+PX8/bTpBfPVNjFWq8p7gVwCh2PfC8/tWzOtMtKG2OGlgt/Fc9zH0\nHqXIi3L1U68rMFh21Le7i2ok5bTnwKQ8eCz/1kEyfUIG2ZB8flCpc14VQwKBgQC5\n1vFRjLtDR3+KsDKA2JbrDeEP5W29cwAfE/+ftL67vlRAOLoBVsTwJ/8EYR1MWXTG\nv/tTqQkiY57v18dzIo1Ct7HeFkLgoNHJ02zg7uh30zj+VFxfGPLSSu+/v0C523+5\n37tT/lAFggJeHjP4hWlVTY29MdCueYqulu2+vlZepwKBgGwipdcX8OA83XeBckoe\nGBqvw3CkjGIUWci+HEgE/RVPvwGqrhOqTKa4UYuRZ0WBOSYNNwEIpXMNOF+YBn0I\niCpICliAH0sZh4ovZ6/kwL52y9sAiK8WFAu3eF5r6zxldKU9Ma7PerkUU7/+19Pj\nSRzDHi0X6i+HQbI8yTfb/RDT\n-----END PRIVATE KEY-----\n",
+  "client_email": "caerus-new-plugin@news-urls-processed.iam.gserviceaccount.com",
+  "client_id": "118323512908951396082",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/caerus-new-plugin%40news-urls-processed.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

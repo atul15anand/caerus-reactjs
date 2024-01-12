@@ -16,7 +16,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "build": "webpack --config webpack.config.js",
+    "build": "webpack --watch --progress --config webpack.config.js",
     "watch": "webpack -w --config webpack.config.js"
   },
   "eslintConfig": {

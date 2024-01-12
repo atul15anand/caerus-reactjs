@@ -1,160 +1,47 @@
 /* eslint-disable no-undef */
+// http://0.0.0.0:3002
 let main_url = "https://news.almaconnect.com";
 let karmabox_url = "https://karmabox.almaconnect.com";
 let urlsToOpen = [];
-let rss_candidates_data = [];
-let rss_urls = [];
 let newstabCreation = false;
+let isTabCreationInProgress = false;
+let rss_source = null;
+let data_selector_fields = null;
+let primary_urls = [];
+let current_primary_url= null;
+let urlHash = {};
 
 async function getMessage(request, sender, sendResponse) {
   if (request.action === "generateNewTabs") {
     urlsToOpen = [];
-    createTabs(request.urls, true);
+    createTabs(request.urls);
   }
-  else if (request.action === "sendGetRssSourcesRequest") {
-    rss_candidates_data = [];
-    rss_urls = [];
-    chrome.cookies.get({ url: main_url, name: "api_key" }, async function (cookie) {
-      if (cookie) {
-        const apiKey = cookie.value;
-        const url = karmabox_url + "/rss_candidates/fetch_rss_candidate_plugin?api_key=" + apiKey;
-        const headers = {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
-        };
-
-        fetch(url, { method: "GET", headers })
-          .then(async (response) => {
-            if (response.ok) {
-              return response.json();
-            } else {
-              throw new Error("Request failed.");
-            }
-          })
-          .then((data) => {
-            console.log("we got candidate data");
-            console.log(data.data);
-            processRssCandidate(data.data); // sending candidates
-          })
-          .catch((error) => {
-            console.log("An error occurred:", error);
-            // Handle error
-          });
-      } else {
-        console.log("Cannot retrieve cookie!");
-        chrome.tabs.query({active: true, currentWindow: true}, function (tabs) {
-          const tab = tabs[0];
-          if (tab && tab.url) {
-            chrome.tabs.sendMessage(tab.id, { action: "cookieMissingError" });
-          }
-        });
-      }
+  else if (request.action === "getRssSourceAndSync") {
+    primary_urls = [];
+    current_primary_url = null;
+    getRssSourceToSync();
+  } else if (request.action === "sendInfoFromArticle") {
+    sendSharableArticleData(request.data, request.url);
+  }
+  else if(request.action === "requestForRssSource"){
+    sendResponse({ rss_data: rss_source, selectors_data: data_selector_fields });
+  }
+  else if(request.action === "fetchConfirmedUrls"){
+    console.log("we are trying to get confirmed urls");
+    chrome.storage.local.get({ confirmedURLs: [] }, function (data) {
+      const confirmedURLs = data.confirmedURLs;
+      sendResponse({links: confirmedURLs});
     });
-  } else if (request.action === "sendContentFromUrls") {
-    let data = request.data;
-    chrome.cookies.get({ url: main_url, name: "api_key" }, async function (cookie) {
-      if (cookie) {
-        const apiKey = cookie.value;
-        data["api_key"] = apiKey;
-        const url = karmabox_url + "/matching_articles/fetch_sharable_article_data";
-        const headers = {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
-        };
-        const flagToClose = getParameterByName("flagToClose",data["content"]["link"]);
-        console.log("flag to close is ", flagToClose);
-        console.log("urls length is ", urlsToOpen.length);
-        data["content"]["last_rss_article"] = (urlsToOpen.length == 0 && flagToClose)? true : false;
-        console.log("last wala", data["content"]["last_rss_article"]);
-        fetch(url, { method: "POST", body: JSON.stringify(data), headers })
-          .then(async (response) => {
-            console.log(response);
-            if (response.ok) {
-              chrome.tabs.query({ url: request.url }, function (tabs) {
-                const tab = tabs[0];
-                if (tab && tab.url) {
-                  chrome.tabs.sendMessage(tab.id, { action: "storeConfirmedUrl", url: tab.url, message: true },async (response) => {
-                    if (response && response.success) {
-                      closeTab(request.url);
-                    }
-                  });
-                }
-              });
-            } else if (response.status == 500) {
-              chrome.tabs.query({ url: request.url }, async (tabs) => {
-                const tab = tabs[0];
-                if (tab && tab.url) {
-                  chrome.tabs.sendMessage(tab.id, { action: "storeRssSourceNotFound", data: data.content.rss_source_url, url: tab.url });
-                }
-              });
-            } else if (response.status == 409){
-              chrome.tabs.query({ url: request.url }, async (tabs) => {
-                const tab = tabs[0];
-                if (tab && tab.url) {
-                  chrome.tabs.sendMessage(tab.id, { action: "storeConfirmedUrl", url: tab.url, message: false },async (response) => {});
-                  chrome.tabs.sendMessage(tab.id, { action: "duplicateData", url: tab.url }, async (response) => {
-                    if (response && response.success) {
-                      closeTab(request.url);
-                    }
-                  });
-                }
-              });
-            }
-            else {
-              chrome.tabs.query({ url: request.url }, async (tabs) => {
-                const tab = tabs[0];
-                if (tab && tab.url) {
-                  chrome.tabs.sendMessage(tab.id, { action: "dataMissingMessage", data: data.content, url: tab.url });
-                }
-              });
-            }
-          })
-          .catch((error) => {
-            console.log("An error occurred:", error);
-            openNextTab(); // Proceed to the next tab even if there's an error
-          });
-      } else {
-        console.log("Cannot retrieve cookie!");
-        chrome.tabs.query({ url: request.url }, async (tabs) => {
-          const tab = tabs[0];
-          if (tab && tab.url) {
-            chrome.tabs.sendMessage(tab.id, { action: "cookieMissingError" });
-          }
-        });
-      }
-    });
+    return true;
   }
 }
 
-function getParameterByName(name, url) {
-  const searchParams = new URLSearchParams(new URL(url).search);
-  return searchParams.get(name);
-}
-
-async function createTabs(urls, direct) {
-  urlsToOpen = urls.filter(url => url && url.includes("/news/2023"));
-  urlsToOpen.sort();
-  newstabCreation = false;
-  setTimeout(() => openNextTab(direct), 1000)
-}
-
-async function processRssCandidate(rss_candidates) {
-  rss_candidates_data = rss_candidates;
-  const candidate = rss_candidates_data.shift();
-  fetchRssSources(candidate._id);
-}
-
-async function processRssSources(rss_source_urls) {
-  rss_urls = rss_source_urls;
-  isTabCreationInProgress = false;
-  setTimeout(() => openNextNewPage(), 1000);
-}
-
-function fetchRssSources(candidate_id) {
+// Function to get Manual Article Sync
+function getRssSourceToSync() {
   chrome.cookies.get({ url: main_url, name: "api_key" }, async function (cookie) {
     if (cookie) {
       const apiKey = cookie.value;
-      const url = karmabox_url + "/rss_sources/fetch_rss_sources_plugin?api_key=" + apiKey + "&rss_candidate_id=" + candidate_id;
+      const url = karmabox_url + "/rss_sources/fetch_plugin_rss_source?api_key=" + apiKey;
       const headers = {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`
@@ -169,99 +56,279 @@ function fetchRssSources(candidate_id) {
           }
         })
         .then((data) => {
-          console.log("fetched rss sources");
-          console.log(data.data);
-          processRssSources(data.data); // sending candidates
+          rss_source = data.data;
+          data_selector_fields = data.data_selector_fields;
+          console.log("data selector fields are : ",data_selector_fields);
+          setPrimaryUrls();
         })
         .catch((error) => {
           console.log("An error occurred:", error);
-          // Handle error
         });
     } else {
-      console.log("Cannot retrieve cookie!");
-      chrome.tabs.query({ url: request.url }, async (tabs) => {
-        const tab = tabs[0];
-        if (tab && tab.url) {
-          chrome.tabs.sendMessage(tab.id, { action: "cookieMissingError" });
-        }
-      });
+      console.log("Cannot retrieve Cookie!");
     }
   });
 }
 
-let isTabCreationInProgress = false;
-function openNextNewPage() {
-  if (rss_urls.length > 0 && !isTabCreationInProgress) {
-    const url = rss_urls.shift();
-    const modifiedUrl = "https://www.bizjournals.com/" + url.split("_")[1] + "/news";
-    isTabCreationInProgress = true; // Set flag to indicate tab creation is in progress
+function setPrimaryUrls(){
+  primary_urls = rss_source.primary_urls;
+  fetchUrlsFromPrimaryPage();
+}
 
-    chrome.tabs.create({ url: modifiedUrl }, function (tab) {
-      const tabId = tab.id;
-      chrome.tabs.onUpdated.addListener(function listener(updatedTabId, changeInfo, updatedTab) {
-        if (updatedTabId === tabId && changeInfo.status === "complete" && updatedTab.status === "complete") {
-          chrome.tabs.onUpdated.removeListener(listener);
-          chrome.tabs.sendMessage(tab.id, { action: "getLinks" }, async (response) => {
-            if (response && response.links) {
-              articleLinksData = response.links;
-              console.log(response.links);
-              chrome.tabs.remove(tabId, function () { });
-              createTabs(response.links, false);
-            }
-          });
-          isTabCreationInProgress = false; // Reset the flag after the tab creation is complete
-        }
+function fetchUrlsFromPrimaryPage() {
+  console.log("Current Primary urls are :", primary_urls.length);
+  if (primary_urls.length > 0 && urlsToOpen.length === 0) {
+    if(isTabCreationInProgress){
+      return;
+    }
+    current_primary_url = primary_urls.shift();
+    isTabCreationInProgress = true;
+    
+    // Moving the tab creation logic inside a separate function
+    function createPrimaryTab() {
+      chrome.tabs.create({ url: current_primary_url }, function (tab) {
+        const tabId = tab.id;
+        let listenerActive = true;
+        chrome.tabs.onUpdated.addListener(function listener(updatedTabId, changeInfo, updatedTab) {
+          if (!listenerActive) {
+            return;
+          }
+          if (updatedTabId === tabId && changeInfo.status === "complete" && updatedTab.status === "complete") {
+            let timer = 0;
+            setTimeout(() => {
+              chrome.tabs.sendMessage(tab.id, {action: "getLoadInfo"},
+              async (response) => {
+                console.log("Load state is : ", response);
+                if(!response.fullyLoaded){
+                  timer = 60000;
+                }
+                setTimeout(() => {
+                  chrome.tabs.sendMessage(
+                    tab.id,
+                    { action: "getLinks", url_filter: rss_source.url_filter, url_fetch_criteria: data_selector_fields.url_fetch_criteria },
+                    async (response) => {
+                      console.log("Response from articles:", response);
+                      if (response && response.links) {
+                        articleLinksData = response.links;
+                        current_primary_url = response.primary_url;
+                        console.log(response.links);
+                        if (articleLinksData.length === 0) {
+                          console.log("ZERO links");
+                          closePrimaryUrl(0);
+                          setTimeout(() => {
+                            fetchUrlsFromPrimaryPage();
+                          }, 5000);
+                        } else {
+                          createTabs(response.links);
+                        }
+                      } else {
+                        console.log("No response or links in response.");
+                        primary_urls.push(current_primary_url);
+                        console.log("We pushed primary again:", current_primary_url);
+                        closePrimaryUrl(0);
+                        setTimeout(() => {
+                          fetchUrlsFromPrimaryPage();
+                        }, 30000);
+                      }
+                    }
+                  );
+                  isTabCreationInProgress = false;
+                  listenerActive = false;
+                  chrome.tabs.onUpdated.removeListener(listener);
+                }, timer);
+              })
+            }, 5000);
+          }
+        });
       });
-    });
+    }
+    createPrimaryTab();
+  } else {
+    scheduleCurrentManualArticleSync();
+    setTimeout(() => {
+      getRssSourceToSync();
+    }, 2000);
   }
 }
+
+function scheduleCurrentManualArticleSync() {
+  console.log("schedule method");
+  chrome.cookies.get({ url: main_url, name: "api_key" }, async function (cookie) {
+    if (cookie) {
+      const apiKey = cookie.value;
+      let data = {"api_key": apiKey};
+      const url = karmabox_url + "/rss_sources/schedule_current_manual_article_sync";
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      };
+      fetch(url, { method: "POST", body: JSON.stringify(data), headers })
+        .then(async (response) => {
+          console.log(response);
+        })
+        .catch((error) => {
+          console.log("An error occurred:", error);
+        })
+    } else {
+      console.log("Cannot retrieve Cookie!");
+    }
+  });
+}
+
+function sendSharableArticleData(data, tabUrl) {
+  chrome.cookies.get({ url: main_url, name: "api_key" }, async function (cookie) {
+    if (cookie) {
+      const apiKey = cookie.value;
+      data["api_key"] = apiKey;
+      const url = karmabox_url + "/matching_articles/process_manual_sharable_article";
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      };
+      fetch(url, { method: "POST", body: JSON.stringify(data), headers })
+        .then(async (response) => {
+          console.log(response);
+          if (response.ok) {
+            createTabs(urlsToOpen);
+            chrome.tabs.query({ url: tabUrl }, function (tabs) {
+              const tab = tabs[0];
+              if (tab && tab.url) {
+                storeConfirmedURL(tab.url);
+                closeTab(tab.url);
+              }
+            });
+            console.log("going to open new");
+            // openNextTab();
+          } else if (response.status == 500) {
+            if(urlHash[tabUrl]){
+              urlHash[tabUrl]++;
+            }
+            else{
+              urlHash[tabUrl]=1;
+            }
+            console.log("we are here to 422");
+            console.log("count is : ", urlHash[tabUrl]);
+            if(urlHash[tabUrl] > 1){
+              storeConfirmedURL(tabUrl);
+              closeTab(tabUrl);
+              createTabs(urlsToOpen);
+              urlHash={};
+            }
+          } else if (response.status == 409){
+            createTabs(urlsToOpen);
+            chrome.tabs.query({ url: tabUrl }, async (tabs) => {
+              const tab = tabs[0];
+              if (tab && tab.url) {
+                storeConfirmedURL(tab.url);
+                closeTab(tab.url);
+                // openNextTab();
+              }
+            });
+            console.log("going to open new");
+            // openNextTab();
+          }
+          else {
+            if(urlHash[tabUrl]){
+              urlHash[tabUrl]++;
+            }
+            else{
+              urlHash[tabUrl]=1;
+            }
+            console.log("we are here to 422");
+            console.log("count is : ", urlHash[tabUrl]);
+            if(urlHash[tabUrl] > 2){
+              storeConfirmedURL(tabUrl);
+              closeTab(tabUrl);
+              createTabs(urlsToOpen);
+              urlHash={};
+            }      
+          }
+        })
+        .catch((error) => {
+          console.log("An error occurred:", error);
+          openNextTab(); // Proceed to the next tab even if there's an error
+        })
+    } else {
+      console.log("Cannot retrieve Cookie!");
+    }
+  });
+}
+
+function storeConfirmedURL(article_url) {
+  console.log("current primary url : ", current_primary_url);
+  chrome.tabs.query({ url: current_primary_url }, async (tabs) => {
+    const tab = tabs[0];
+    if (tab && tab.url) {
+      console.log("storing processed url");
+      chrome.tabs.sendMessage(tab.id, { action: "storeConfirmedUrl", url: article_url });
+    }
+  });
+}
+
+function getParameterByName(name, url) {
+  const searchParams = new URLSearchParams(new URL(url).search);
+  return searchParams.get(name);
+}
+
+async function createTabs(urls) {
+  urlsToOpen = urls;
+  newstabCreation = false;
+  setTimeout(() => openNextTab(), 1000);
+}
+
 function closeTab(url) {
   chrome.tabs.query({ url: url }, function (tabs) {
     const tab = tabs[0];
     if (tab && tab.url) {
       const flagToClose = getParameterByName("flagToClose", tab.url);
-      if (flagToClose === "true") {
-        chrome.tabs.remove(tab.id, function () { });
-      }
+        chrome.tabs.remove(tab.id, function () {});
     }
   });
 }
 
-function openNextTab(direct) {
+function buildUrl(url){
+  const separator = url.includes('?') ? '&' : '?';
+  const updatedUrl = `${url}${separator}flagToClose=true`;
+  return updatedUrl;
+}
+
+function openNextTab() {
+  console.log("urls length is :", urlsToOpen.length);
   if (urlsToOpen.length > 0) {
     if (newstabCreation) {
       return;
     }
     newstabCreation = true;
     const url = urlsToOpen.shift();
-    const modifiedUrl = url + "?flagToClose=true";
+    const modifiedUrl =  buildUrl(url);
     chrome.tabs.create({ url: modifiedUrl }, function (tab) {
       const tabId = tab.id;
       chrome.tabs.onUpdated.addListener(function listener(updatedTabId, changeInfo, updatedTab) {
         if (updatedTabId === tabId && changeInfo.status === "complete" && updatedTab.status === "complete") {
           chrome.tabs.onUpdated.removeListener(listener);
-          chrome.tabs.get(tabId, function (tab) {
-            const flagToClose = getParameterByName("flagToClose", tab.url);
-            newstabCreation = false;
-            if (flagToClose === "true") {
-                openNextTab(direct);
-              // });
-            } else {
-              openNextTab(direct);
-            }
-          });
+          newstabCreation = false;
         }
       });
     });
   }
-  else if(!direct) {
-    if (rss_urls.length > 0) {
-      openNextNewPage();
-    } else {
-      const candidate = rss_candidates_data.shift();
-      fetchRssSources(candidate._id);
-    }
+  else{
+    closePrimaryUrl(2000);
+    setTimeout(() => {
+      fetchUrlsFromPrimaryPage();
+    }, 5000);
   }
+}
+
+function closePrimaryUrl(timeout) {
+  chrome.tabs.query({ url: current_primary_url }, async (tabs) => {
+    const tab = tabs[0];
+    if (tab && tab.url) {
+      setTimeout(() => {
+        console.log("closing the tab");
+        chrome.tabs.remove(tab.id);
+      }, timeout);
+    }
+  });
 }
 
 chrome.runtime.onMessage.addListener(getMessage);
