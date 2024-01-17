@@ -1,7 +1,7 @@
 {
-    "version": "2.0.3",
+    "version": "2.0.4",
     "manifest_version": 3,
-    "name": "Caerus reactJS Generic 2nd Jan 2023",
+    "name": "Caerus reactJS Generic 15nd Jan 2024",
     "description": "This is a Chrome extension built with ReactJS",
     "action": {
         "default_popup": "js/index.html",

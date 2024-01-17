@@ -1,30 +1,26 @@
 /* eslint-disable no-undef */
+
+const dateData = [{query_value: 'meta[itemprop="datePublished"]', query_selector: 'querySelector', html_attribute: 'content', token_number: []},
+{query_value: 'meta[property="article:published_time"]', query_selector: 'querySelector', token_number: [], html_attribute: 'content'},
+{query_value: 'article_date', query_selector: 'getElementsByClassName', token_number: [0], html_attribute: 'innerText'},
+{query_value: 'time', query_selector: 'querySelector', token_number: [], html_attribute: 'dateTime'},
+{query_value: 'meta[name="timestamp"]', query_selector: 'querySelector', token_number: [], html_attribute: 'content'},
+{query_value: 'meta[name="parsely-pub-date"]', query_selector: 'querySelector', token_number: [], html_attribute: 'content'},
+{query_value: 'meta[name="date"]', query_selector: 'querySelector', token_number: [], html_attribute: 'content'},
+{query_value: 'meta[name="dc.date"]', query_selector: 'querySelector', token_number: [], html_attribute: 'content'},
+{query_value: 'time.index-module_storyDatelineText__26r5', query_selector: 'querySelector', token_number: [], html_attribute: 'dateTime'},
+{query_value: 'meta[name="citation_online_date"]', query_selector: 'querySelector', token_number: [], html_attribute: 'content'},
+{query_value: 'meta[name="DC.Date"]', query_selector: 'querySelector', html_attribute: 'content', token_number: []},]
+
+const dateFormats = [
+  /\b(\d{4})\/(\d{1,2})\/(\d{1,2})\b/,
+  /\b(\d{4})-(\d{1,2})-(\d{1,2})\b/,
+  /\b(\d{1,2})-(\d{1,2})-(\d{4})\b/
+];
+
 function getMessage(request, sender, sendResponse) {
   if(!request.url === window.location.href){
     return;
-  }
-  if (request.action === "storeRssSourceNotFound") {
-    let rss_sources_url = localStorage.getItem("rss_sources_url") ? JSON.parse(localStorage.getItem("rss_sources_url")) : [];
-    const rssSourceUrl = request.data;
-    if(!rss_sources_url.includes(rssSourceUrl)){
-      rss_sources_url.push(rssSourceUrl);
-      localStorage.setItem("rss_sources_url", JSON.stringify(rss_sources_url));
-    }
-    // addMessageToDOM("Rss Source not found." + "Add "+ rssSourceUrl, "red");
-    sendResponse({data: true});
-  }
-  else if(request.action === "dataMissingMessage") {
-    sendResponse({data: true});
-  }
-  else if (request.action === "cookieMissingError") {
-    sendResponse({data: true});
-  }
-  else if(request.action === "duplicateData"){
-    sendResponse({data: true});
-  }
-  else if(request.action === "fetchLocalData"){
-    const storedLinksData = JSON.parse(localStorage.getItem('articleLinksData')) || [];
-    sendResponse({links: storedLinksData});
   }
 }
 
@@ -149,6 +145,19 @@ function buildQuery(link_data) {
   }
 }
 
+function extractDateFromHtml(htmlContent) {
+  for (const format of dateFormats) {
+    const match = htmlContent.match(format);
+    if (match) {
+      // Return the first match
+      return match.slice(1).join('-');
+    }
+  }
+
+  // Return null if no date is found
+  return null;
+}
+
 window.onload = function() {
   const rootElement = document.documentElement;
 
@@ -171,67 +180,21 @@ window.onload = function() {
   
   setTimeout(() => {
     setTimeout(() => {
-      window.location.reload();
-    }, 2000);
-    let rss_obj = null;
-    chrome.runtime.sendMessage({ action: "requestForRssSource" }, function(response) {
-      console.log(response);
-      if (response && response.rss_data && response.selectors_data) {
-        rss_obj = response.rss_data;  
-        selectors_data = response.selectors_data;
+      // window.location.reload();
+    }, 2000); 
 
-        console.log("DATE");
+      const datePublished = extractDateFromHtml(document.documentElement.outerHTML);
+      console.log("dateContent : ", datePublished);
+      const currentDate = new Date();
 
-        let date = null;
-        for(let i=0;i<selectors_data.published_at.length;i++){
-          date ||= buildQuery(selectors_data.published_at[i]);
-          console.log("date query is : ", date);
-        }
+      const content = {
+        published_at: datePublished || currentDate,
+        html: document.documentElement.outerHTML,
+        link: window.location.href
+      };
 
-        let dateContent = date;
-        console.log("dateContent : ", dateContent);
-
-        let image_url;
-        let link = window.location.href;
-        const article_url = link.replace(/[?&]flagToClose=true/g, '');
-
-        console.log("TITLE");
-        let title = null;
-        for(let i=0;i<selectors_data.title_elements.length; i++){
-          let title_line = buildQuery(selectors_data.title_elements[i]);
-          title ||= title_line;
-        }
-        console.log("title is : ", title);
-        console.log("ARTICLE CONTENT");
-
-        let article_content = null;
-        for(let i=0;i<selectors_data.article_content.length;i++){
-          article_content ||= buildQuery(selectors_data.article_content[i]);
-        }
-        console.log("final article content is : ", article_content);
-
-        console.log("IMAGE URL");
-        for(let i=0;i<selectors_data.image_url.length;i++){
-          image_url ||= buildQuery(selectors_data.image_url[i]);
-        }
-        console.log("image url is : ", image_url);
-
-        const content = {
-          article_url: article_url,
-          article_content: article_content || "No Content",
-          image_url: image_url || "https://picsum.photos/id/0/5000/3333",
-          published_at: dateContent,
-          title: title,
-          link: link
-        };
-
-        console.log("CONTENT IS :", content);
-        const data = {
-          content: content,
-        };
-
-        chrome.runtime.sendMessage({ action: "sendInfoFromArticle", data: data, url: window.location.href });
-      }
-    });
+      console.log("CONTENT IS :", content);
+  
+    chrome.runtime.sendMessage({ action: "sendInfoFromArticle", data: content, url: window.location.href });
   }, timeoutValue);
 };

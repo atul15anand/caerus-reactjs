@@ -1,10 +1,11 @@
 /* eslint-disable no-undef */
+/* This page only fetches urls for processing*/
 import importedLinks from './url_import.js';
   function getMessage(request, sender, sendResponse) {
   
     if (request.action === "getLinks") {
       
-      getArticleLinks(request.url_fetch_criteria, request.url_filter, request.website_data)
+      getArticleLinks()
         .then(links => {
           console.log("links are in content: ", links);
           links = links.map(link => link.split("#")[0]);
@@ -50,16 +51,13 @@ import importedLinks from './url_import.js';
     }
   }
 
-  function getArticleLinks(url_fetch_criteria, url_filter, website_data) {
+  function getArticleLinks() {
     return new Promise((resolve, reject) => {
       let query = [],links = new Set(), temp;
       temp = document.querySelectorAll("a");
       query = Array.from(temp).map((x) => x.href);
-      links = filterUrlsByHost(website_data, query);
-      links = Array.from(new Set(links)).filter(url => (!url.includes("flagToClose") && !url.includes("#guestbook") &&  !url.includes("pdf")));
-      if(url_filter != null){
-        links = Array.from(new Set(links)).filter(url => (url.includes(url_filter)))
-      }
+      links = query
+      links = Array.from(new Set(links)).filter(url => (url.includes("news/20") && !url.includes("flagToClose") && !url.includes("#guestbook") &&  !url.includes("pdf")));
       if (links.length) {
         console.log("after links", links);
       }
