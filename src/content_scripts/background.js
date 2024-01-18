@@ -231,7 +231,6 @@ function sendSharableArticleData(data, tabUrl) {
     if (cookie) {
       const apiKey = cookie.value;
       data["api_key"] = apiKey;
-      data["rss_source_id"] = rss_source.id
       data["article_url"] = tabUrl
       const url = karmabox_url + "/matching_articles/sync_manual_sharable_article";
       const headers = {

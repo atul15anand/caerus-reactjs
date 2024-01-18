@@ -179,16 +179,11 @@ window.onload = function() {
   }
   
   setTimeout(() => {
-    setTimeout(() => {
-      window.location.reload();
-    }, 2000); 
-
       const datePublished = extractDateFromHtml(document.documentElement.outerHTML);
       console.log("dateContent : ", datePublished);
       const currentDate = new Date();
 
       const content = {
-        published_at: datePublished || currentDate,
         html: document.documentElement.outerHTML,
         link: window.location.href
       };
