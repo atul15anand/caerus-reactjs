@@ -180,7 +180,7 @@ window.onload = function() {
   
   setTimeout(() => {
     setTimeout(() => {
-      // window.location.reload();
+      window.location.reload();
     }, 2000); 
 
       const datePublished = extractDateFromHtml(document.documentElement.outerHTML);

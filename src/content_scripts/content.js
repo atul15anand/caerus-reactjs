@@ -57,7 +57,7 @@ import importedLinks from './url_import.js';
       temp = document.querySelectorAll("a");
       query = Array.from(temp).map((x) => x.href);
       links = query
-      links = Array.from(new Set(links)).filter(url => (url.includes("news/20") && !url.includes("flagToClose") && !url.includes("#guestbook") &&  !url.includes("pdf")));
+      links = Array.from(new Set(links)).filter(url => (!url.includes("flagToClose") && !url.includes("#guestbook") &&  !url.includes("pdf")));
       if (links.length) {
         console.log("after links", links);
       }

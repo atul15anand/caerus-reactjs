@@ -250,17 +250,9 @@ function sendSharableArticleData(data, tabUrl) {
               }
             });
           } else if (response.status === 500) {
-            if(urlHash[tabUrl]){
-              urlHash[tabUrl]++;
-            }
-            else{
-              urlHash[tabUrl]=1;
-            }
-            if(urlHash[tabUrl] > 1){
               closeTab(tabUrl);
               delete urlHash[tabUrl];
               createTabs(urlsToOpen);
-            }
           } else if (response.status === 409){
             createTabs(urlsToOpen);
             chrome.tabs.query({ url: tabUrl }, async (tabs) => {
@@ -271,17 +263,8 @@ function sendSharableArticleData(data, tabUrl) {
             });
           }
           else {
-            if(urlHash[tabUrl]){
-              urlHash[tabUrl]++;
-            }
-            else{
-              urlHash[tabUrl]=1;
-            }
-            if(urlHash[tabUrl] >= 2){
               closeTab(tabUrl);
-              createTabs(urlsToOpen);
-              delete urlHash[tabUrl];
-            }      
+              createTabs(urlsToOpen);     
           }
         })
         .catch((error) => {
