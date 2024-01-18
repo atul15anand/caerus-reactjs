@@ -10,7 +10,7 @@ let data_selector_fields = null;
 let primary_urls = [];
 let current_primary_url= null;
 let urlHash = {};
-const accessToken = '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';
+const accessToken = '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';
 
 async function getMessage(request, sender, sendResponse) {
   if (request.action === "generateNewTabs") {
