@@ -212,26 +212,11 @@ function fetchUrlsFromPrimaryPage() {
                       if (response && response.links) {
                         console.log("we are here");
                         current_primary_url = response.primary_url;
-                        getFilteredLinks(response.links, current_primary_url)
-                        .then(filteredUrls => {
-                          if (filteredUrls.length === 0) {
-                            console.log("ZERO links");
-                            closePrimaryUrl(0);
-                            setTimeout(() => {
-                              fetchUrlsFromPrimaryPage();
-                            }, 5000);
-                          } else {
-                            closePrimaryUrl(0);
-                            console.log("now here");
-                            setTimeout(() => {
-                              createTabs(filteredUrls);
-                            }, 5000);
-                          }
-                        })
-                        .catch(error => {
-                          console.error("Error while filtering links:", error);
-                          // Handle the error here
-                        });
+                        closePrimaryUrl(0);
+                        console.log("now here");
+                        setTimeout(() => {
+                          createTabs(response.links);
+                        }, 5000);
                       } else {
                         primary_urls.push(current_primary_url);
                         closePrimaryUrl(0);
@@ -302,7 +287,6 @@ function sendSharableArticleData(data, tabUrl) {
               const tab = tabs[0];
               if (tab && tab.url) {
                 closeTab(tab.url);
-                storeConfirmedURL(tab.url);
               }
             });
           } else if (response.status === 500) {
@@ -314,7 +298,6 @@ function sendSharableArticleData(data, tabUrl) {
             }
             if(urlHash[tabUrl] > 1){
               closeTab(tabUrl);
-              storeConfirmedURL(tabUrl);
               delete urlHash[tabUrl];
               createTabs(urlsToOpen);
             }
@@ -324,7 +307,6 @@ function sendSharableArticleData(data, tabUrl) {
               const tab = tabs[0];
               if (tab && tab.url) {
                 closeTab(tab.url);
-                storeConfirmedURL(tab.url);
               }
             });
           }
@@ -338,7 +320,6 @@ function sendSharableArticleData(data, tabUrl) {
             if(urlHash[tabUrl] >= 2){
               console.log("tab url is : ", tabUrl);
               closeTab(tabUrl);
-              storeConfirmedURL(tabUrl);
               createTabs(urlsToOpen);
               delete urlHash[tabUrl];
             }      
