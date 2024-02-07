@@ -1,7 +1,7 @@
 /* eslint-disable no-undef */
 // http://0.0.0.0:3002
-let main_url = "http://localhost:3000";
-let karmabox_url = "http://0.0.0.0:3002";
+let main_url = "https://news.almaconnect.com";
+let karmabox_url = "https://karmabox.almaconnect.com";
 let urlsToOpen = [];
 let newstabCreation = false;
 let isTabCreationInProgress = false;
@@ -76,7 +76,6 @@ function getRssSourceToSync() {
           }
         })
         .then((data) => {
-          console.log("we got this source , ",data);
           rss_source = data.data;
           setPrimaryUrls();
         })
@@ -106,7 +105,7 @@ function filterUrlsFetched(urls){
       };
       let data = {};
       data["urls"] = urls;
-      data["rss_source_id"] = rss_source.id;
+      data["rss_source_id"] = rss_source._id;
       console.log("we are sending ", data);
       fetch(url, { method: "POST", body: JSON.stringify(data), headers })
         .then(async (response) => {
@@ -163,7 +162,7 @@ function fetchUrlsFromPrimaryPage() {
                 setTimeout(() => {
                   chrome.tabs.sendMessage(
                     tab.id,
-                    { action: "getLinks"},
+                    { action: "getLinks", rss_source_url: rss_source.url},
                     async (response) => {
                       console.log("Response from articles:", response);
                       if (response && response.links) {
@@ -232,6 +231,7 @@ function sendSharableArticleData(data, tabUrl) {
       const apiKey = cookie.value;
       data["api_key"] = apiKey;
       data["article_url"] = tabUrl
+      data["rss_source_id"] = rss_source._id;
       const url = karmabox_url + "/matching_articles/sync_manual_sharable_article";
       const headers = {
         "Content-Type": "application/json",

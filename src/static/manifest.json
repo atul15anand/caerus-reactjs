@@ -49,9 +49,6 @@
             "https://people.com/awards/",
             "https://people.com/country/",
             "https://people.com/human-interest/"        
-          ],
-          "exclude_matches": [
-            "https://*.legacy.com/*flagToClose*"
           ]
         },
         {
@@ -82,14 +79,6 @@
             "https://people.com/awards/",
             "https://people.com/country/"
             
-          ]
-        },
-        {
-          "js": ["js/legacy_content.js"],
-          "matches":
-          [
-            "https://*.legacy.com/*flagToClose*",
-            "https://obits.dallasnews.com/us/obituaries/dallasmorningnews/today"
           ]
         }
     ]

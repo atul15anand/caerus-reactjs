@@ -5,15 +5,12 @@ import importedLinks from './url_import.js';
   
     if (request.action === "getLinks") {
       
-      getArticleLinks()
+      getArticleLinks(request.rss_source_url)
         .then(links => {
           console.log("links are in content: ", links);
           links = links.map(link => link.split("#")[0]);
           links = links.filter(link => !importedLinks.includes(link));
           links = links.filter((url, index, array) => array.indexOf(url) === index);
-          if(window.location.href.includes("chronicle.com")){
-            links = []
-          }
           sendResponse({ links, primary_url: window.location.href });
         })
         .catch(error => {
@@ -51,7 +48,7 @@ import importedLinks from './url_import.js';
     }
   }
 
-  function getArticleLinks() {
+  function getArticleLinks(url) {
     return new Promise((resolve, reject) => {
       let query = [],links = new Set(), temp;
       temp = document.querySelectorAll("a");
@@ -61,6 +58,7 @@ import importedLinks from './url_import.js';
       if (links.length) {
         console.log("after links", links);
       }
+      links = filterUrlsByHost(url, links);
       resolve(links);
     });
   }
