@@ -214,7 +214,6 @@ function scheduleCurrentRssSourceSync() {
       };
       fetch(url, { method: "POST", body: JSON.stringify(data), headers })
         .then(async (response) => {
-          getRssSourceToSync();
         })
         .catch((error) => {
           console.log("An error occurred:", error);
@@ -263,7 +262,7 @@ function sendSharableArticleData(data, tabUrl) {
           }
           else {
               closeTab(tabUrl);
-              createTabs(urlsToOpen);     
+              createTabs(urlsToOpen);    
           }
         })
         .catch((error) => {
