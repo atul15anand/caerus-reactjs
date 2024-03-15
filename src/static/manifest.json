@@ -1,85 +1,91 @@
 {
-    "version": "2.0.4",
-    "manifest_version": 3,
-    "name": "Caerus reactJS Generic 15nd Jan 2024",
-    "description": "This is a Chrome extension built with ReactJS",
-    "action": {
-        "default_popup": "js/index.html",
-        "default_icon": {
-            "16": "assets/logo.png",
-            "32": "assets/logo.png"
-        },
-        "default_title": "News Data Scrapper"
-    },
-    "icons": {
-        "16": "assets/logo.png",
-        "32": "assets/logo.png"
-    },
-    "background":{
-        "service_worker": "js/background.js"
-    },
-    "permissions": ["tabs", "activeTab", "scripting", "webRequest", "cookies", "storage"],
-    "host_permissions": [
-        "https://news.almaconnect.com/",
-        "http://localhost:3000/"
-    ],
-    "content_scripts": [
-        {
+  "version": "2.0.5",
+  "manifest_version": 3,
+  "name": "Caerus reactJS Generic 12nd Feb 2024",
+  "description": "This is a Chrome extension built with ReactJS for news scrapping",
+  "action": {
+      "default_popup": "js/index.html",
+      "default_icon": {
+          "16": "assets/logo.png",
+          "32": "assets/logo.png"
+      },
+      "default_title": "News Data Scrapper"
+  },
+  "icons": {
+      "16": "assets/logo.png",
+      "32": "assets/logo.png"
+  },
+  "background":{
+      "service_worker": "js/background.js"
+  },
+  "permissions": ["tabs", "activeTab", "scripting", "webRequest", "cookies", "storage"],
+  "host_permissions": [
+      "https://news.almaconnect.com/",
+      "http://localhost:3000/"
+  ],
+  "content_scripts": [
+      {
+          "js": ["js/legacy_content.js"],
+          "matches": [
+            "https://www.legacy.com/*"
+          ],                
+          "exclude_matches": ["https://*/*flagArticle=true*"]
+      },
+      {
           "js": ["js/content.js"],
-          "matches": 
-          [
-            "https://*/*flagToClose=true*",
-            "https://people.com/politics/",
-            "https://people.com/celebrity/",
-            "https://people.com/movies/",
-            "https://people.com/tv/",
-            "https://people.com/travel/",
-            "https://people.com/stylewatch-summer-2023-7503754",
-            "https://people.com/food/",
-            "https://people.com/health/",
-            "https://people.com/home/",
-            "https://people.com/parents/",
-            "https://people.com/beauty/",
-            "https://people.com/fashion/",
-            "https://people.com/style/",
-            "https://people.com/royals/",
-            "https://people.com/books/",
-            "https://people.com/theater/",
-            "https://people.com/sports/",
-            "https://people.com/awards/",
-            "https://people.com/country/",
-            "https://people.com/human-interest/"        
+          "matches": [
+              "https://*/*flagToClose=true*",
+              "https://people.com/politics/",
+              "https://people.com/celebrity/",
+              "https://people.com/movies/",
+              "https://people.com/tv/",
+              "https://people.com/travel/",
+              "https://people.com/stylewatch-summer-2023-7503754",
+              "https://people.com/food/",
+              "https://people.com/health/",
+              "https://people.com/home/",
+              "https://people.com/parents/",
+              "https://people.com/beauty/",
+              "https://people.com/fashion/",
+              "https://people.com/style/",
+              "https://people.com/royals/",
+              "https://people.com/books/",
+              "https://people.com/theater/",
+              "https://people.com/sports/",
+              "https://people.com/awards/",
+              "https://people.com/country/",
+              "https://people.com/human-interest/"
           ]
-        },
-        {
+      },
+      {
           "js": ["js/articlecontent.js"],
           "matches": [
-            "https://*/*"
+              "https://*/*flagArticle=true*",
+              "https://*/*"
           ],
           "exclude_matches": [
-            "https://*/*flagToClose=true",
-            "https://people.com/politics/",
-            "https://people.com/human-interest/",
-            "https://people.com/celebrity/",
-            "https://people.com/movies/",
-            "https://people.com/tv/",
-            "https://people.com/travel/",
-            "https://people.com/stylewatch-summer-2023-7503754",
-            "https://people.com/food/",
-            "https://people.com/health/",
-            "https://people.com/home/",
-            "https://people.com/parents/",
-            "https://people.com/beauty/",
-            "https://people.com/fashion/",
-            "https://people.com/style/",
-            "https://people.com/royals/",
-            "https://people.com/books/",
-            "https://people.com/theater/",
-            "https://people.com/sports/",
-            "https://people.com/awards/",
-            "https://people.com/country/"
-            
+              "https://*/*flagToClose=true*",
+              "https://people.com/politics/",
+              "https://people.com/celebrity/",
+              "https://people.com/movies/",
+              "https://people.com/tv/",
+              "https://people.com/travel/",
+              "https://people.com/stylewatch-summer-2023-7503754",
+              "https://people.com/food/",
+              "https://people.com/health/",
+              "https://people.com/home/",
+              "https://people.com/parents/",
+              "https://people.com/beauty/",
+              "https://people.com/fashion/",
+              "https://people.com/style/",
+              "https://people.com/royals/",
+              "https://people.com/books/",
+              "https://people.com/theater/",
+              "https://people.com/sports/",
+              "https://people.com/awards/",
+              "https://people.com/country/",
+              "https://people.com/human-interest/"
           ]
-        }
-    ]
+      }
+  ]
 }

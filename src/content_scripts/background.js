@@ -9,7 +9,7 @@ let rss_source = null;
 let data_selector_fields = null;
 let primary_urls = [];
 let current_primary_url= null;
-let urlHash = {};
+const parallel_rss_source_count = 2;
 
 async function getMessage(request, sender, sendResponse) {
   if (request.action === "generateNewTabs") {
@@ -17,8 +17,7 @@ async function getMessage(request, sender, sendResponse) {
     createTabs(request.urls);
   }
   else if (request.action === "getRssSourceAndSync") {
-    primary_urls = [];
-    current_primary_url = null;
+    resetData();
     getRssSourceToSync();
   } else if (request.action === "sendInfoFromArticle") {
     sendSharableArticleData(request.data, request.url);
@@ -26,38 +25,21 @@ async function getMessage(request, sender, sendResponse) {
   else if(request.action === "requestForRssSource"){
     sendResponse({ rss_data: rss_source, selectors_data: data_selector_fields });
   }
-  else if(request.action === "stopNewsSync") {
-    console.log("Stopping News Sync");
-    primary_urls = [];
-    current_primary_url = null;
-    resetData();
-  }
 }
 
-function resetData() {
-  chrome.cookies.get({ url: main_url, name: "api_key" }, async function (cookie) {
-    if (cookie) {
-      const apiKey = cookie.value;
-      let data = {"api_key": apiKey};
-      const url = karmabox_url + "/rss_sources/disable_manual_article_sync";
-      const headers = {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
-      };
-      fetch(url, { method: "POST", body: JSON.stringify(data), headers })
-        .then(async (response) => {
-        })
-        .catch((error) => {
-          console.log("An error occurred:", error);
-        })
-    } else {
-      console.log("Cannot retrieve Cookie!");
-    }
-  });
+function resetData() { 
+  urlsToOpen = [];
+  newstabCreation = false;
+  isTabCreationInProgress = false;
+  rss_source = null;
+  data_selector_fields = null;
+  primary_urls = [];
+  current_primary_url = null;
 }
 
-// Function to get Manual Article Sync
+// Function to get RssSource to Sync
 function getRssSourceToSync() {
+  if(urlsToOpen.length>0) return;
   chrome.cookies.get({ url: main_url, name: "api_key" }, async function (cookie) {
     if (cookie) {
       const apiKey = cookie.value;
@@ -77,6 +59,7 @@ function getRssSourceToSync() {
         })
         .then((data) => {
           rss_source = data.data;
+          isTabCreationInProgress = false;
           setPrimaryUrls();
         })
         .catch((error) => {
@@ -88,12 +71,14 @@ function getRssSourceToSync() {
   });
 }
 
+// We set the rss source URL in primaryUrls list.
 function setPrimaryUrls(){
   primary_urls = [rss_source.url];
   console.log("primary urls is : ", primary_urls);
   fetchUrlsFromPrimaryPage();
 }
 
+// Function to filter out the Urls fetched from a Page
 function filterUrlsFetched(urls){
   chrome.cookies.get({ url: main_url, name: "api_key" }, async function (cookie) {
     if (cookie) {
@@ -121,7 +106,8 @@ function filterUrlsFetched(urls){
           if(urls.length> 0){
             createTabs(urls);
           }else{
-            scheduleCurrentRssSourceSync();
+            scheduleCurrentRssSourceSync(); // if we do not get any urls we schedule it
+            getRssSourceToSync(); // and move to next
           }
         })
         .catch((error) => {
@@ -132,7 +118,7 @@ function filterUrlsFetched(urls){
     }
   });
 }
-
+// function opens a New tab from Rss Source Url
 function fetchUrlsFromPrimaryPage() {
   if (primary_urls.length > 0 && urlsToOpen.length === 0) {
     if(isTabCreationInProgress){
@@ -140,7 +126,7 @@ function fetchUrlsFromPrimaryPage() {
     }
     current_primary_url = primary_urls.shift();
     isTabCreationInProgress = true;
-    let new_url = buildUrl(current_primary_url);
+    let new_url = buildUrl(current_primary_url, "flagToClose");
     
     // Moving the tab creation logic inside a separate function
     function createPrimaryTab() {
@@ -154,21 +140,23 @@ function fetchUrlsFromPrimaryPage() {
           if (updatedTabId === tabId && changeInfo.status === "complete" && updatedTab.status === "complete") {
             let timer = 0;
             setTimeout(() => {
-              chrome.tabs.sendMessage(tab.id, {action: "getLoadInfo"},
+              chrome.tabs.sendMessage(tab.id, {action: "getLoadInfo"}, // This tells if page needed verification
               async (response) => {
-                if(!response.fullyLoaded){
+                console.log("response is : ", response);
+                console.log("fully loaded is : ", response.fullyLoaded);
+                if(response === null ||  !response.fullyLoaded){
                   timer = 60000;
                 }
                 setTimeout(() => {
                   chrome.tabs.sendMessage(
                     tab.id,
-                    { action: "getLinks", rss_source_url: rss_source.url},
+                    { action: "getLinks", rss_source_url: current_primary_url},
                     async (response) => {
                       console.log("Response from articles:", response);
+                      isTabCreationInProgress = false;
                       if (response && response.links) {
                         console.log("we are here");
                         current_primary_url = response.primary_url;
-                        // response.links
                         closePrimaryUrl(0);
                         setTimeout(() => {
                           filterUrlsFetched(response.links);
@@ -182,7 +170,6 @@ function fetchUrlsFromPrimaryPage() {
                       }
                     }
                   );
-                  isTabCreationInProgress = false;
                   listenerActive = false;
                   chrome.tabs.onUpdated.removeListener(listener);
                 }, timer);
@@ -202,11 +189,13 @@ function fetchUrlsFromPrimaryPage() {
 }
 
 function scheduleCurrentRssSourceSync() {
+  if(urlsToOpen.length>0) return;
   console.log("schedule method");
   chrome.cookies.get({ url: main_url, name: "api_key" }, async function (cookie) {
     if (cookie) {
       const apiKey = cookie.value;
       let data = {"api_key": apiKey};
+      data["rss_source_id"] = rss_source._id;
       const url = karmabox_url + "/rss_sources/schedule_current_rss_source_sync";
       const headers = {
         "Content-Type": "application/json",
@@ -229,7 +218,7 @@ function sendSharableArticleData(data, tabUrl) {
     if (cookie) {
       const apiKey = cookie.value;
       data["api_key"] = apiKey;
-      data["article_url"] = tabUrl
+      data["article_url"] = tabUrl.replace(/[?&]flagArticle=true/g, '').replace(/[?&]flagToClose=true/g, '');
       data["rss_source_id"] = rss_source._id;
       const url = karmabox_url + "/matching_articles/sync_manual_sharable_article";
       const headers = {
@@ -240,6 +229,7 @@ function sendSharableArticleData(data, tabUrl) {
         .then(async (response) => {
           console.log(response);
           if (response.ok) {
+            newstabCreation = false;
             createTabs(urlsToOpen);
             chrome.tabs.query({ url: tabUrl }, function (tabs) {
               const tab = tabs[0];
@@ -249,9 +239,10 @@ function sendSharableArticleData(data, tabUrl) {
             });
           } else if (response.status === 500) {
               closeTab(tabUrl);
-              delete urlHash[tabUrl];
+              newstabCreation = false;
               createTabs(urlsToOpen);
           } else if (response.status === 409){
+            newstabCreation = false;
             createTabs(urlsToOpen);
             chrome.tabs.query({ url: tabUrl }, async (tabs) => {
               const tab = tabs[0];
@@ -261,12 +252,14 @@ function sendSharableArticleData(data, tabUrl) {
             });
           }
           else {
-              closeTab(tabUrl);
-              createTabs(urlsToOpen);    
+            newstabCreation = false;
+            closeTab(tabUrl);
+            createTabs(urlsToOpen);    
           }
         })
         .catch((error) => {
           console.log("An error occurred:", error);
+          newstabCreation = false;
           openNextTab(); // Proceed to the next tab even if there's an error
         })
     } else {
@@ -278,7 +271,6 @@ function sendSharableArticleData(data, tabUrl) {
 async function createTabs(urls) {
   urlsToOpen = urls;
   console.log(urlsToOpen.length);
-  newstabCreation = false;
   setTimeout(() => openNextTab(), 1000);
 }
 
@@ -292,10 +284,16 @@ function closeTab(url) {
   });
 }
 
-function buildUrl(url){
+function buildUrl(url, param){
   const separator = url.includes('?') ? '&' : '?';
-  const updatedUrl = `${url}${separator}flagToClose=true`;
+  const updatedUrl = `${url}${separator}${param}=true`;
   return updatedUrl;
+}
+
+function removeQueryParam(url, paramName) {
+  let Newurl = url.replace(new RegExp(`[?&]${paramName}=true(&|$)`), "");
+  console.log(Newurl);
+  return Newurl;
 }
 
 function openNextTab() {
@@ -307,13 +305,13 @@ function openNextTab() {
     newstabCreation = true;
     let url = urlsToOpen.shift();
     url = url.split('#')[0];
-    console.log("url is : ", url);
+    url = removeQueryParam(url, "flagToClose");
+    url = buildUrl(url, "flagArticle");
     chrome.tabs.create({ url: url }, function (tab) {
       const tabId = tab.id;
       chrome.tabs.onUpdated.addListener(function listener(updatedTabId, changeInfo, updatedTab) {
         if (updatedTabId === tabId && changeInfo.status === "complete" && updatedTab.status === "complete") {
           chrome.tabs.onUpdated.removeListener(listener);
-          newstabCreation = false;
         }
       });
     });

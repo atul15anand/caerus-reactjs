@@ -22,13 +22,6 @@ const Popup = () => {
     });
   };
 
-  const handleStopSync = () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      const [tab] = tabs;
-      chrome.tabs.sendMessage(tab.id, { action: "stopNewsSync" });
-    });
-  };
-
   const handleClearLocalDataClick = () => {
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
       // Send message to content script
@@ -43,7 +36,6 @@ const Popup = () => {
       <div className="heading" style={{ marginTop: '12px' }}>
         Article Scraper
       </div>
-
       <div className="description">
         Click on the button to fetch all data from the website
       </div>
@@ -54,13 +46,6 @@ const Popup = () => {
       
       <div className="description">
         Click the button below to clear local data
-      </div>
-      
-      <button className="popup_btn" onClick={handleStopSync} id="stopSyncMas">
-        Stop News Sync 
-      </button>
-      <div className="description">
-        Click the button to stop the sync
       </div>
 
       <button

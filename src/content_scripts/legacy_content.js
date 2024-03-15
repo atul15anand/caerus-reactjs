@@ -76,12 +76,12 @@ function buildQuery(link_data) {
 function getMessage(request, sender, sendResponse) {
 
   if (request.action === "getLinks") {
-    fetchArticleLinksAndSendResponse(request.url_fetch_criteria, request.url_filter, sendResponse);
+    fetchArticleLinksAndSendResponse(sendResponse);
     return true;
   }
   else if(request.action === "getLoadInfo"){
     let pageText = document.body.innerText;
-    if(pageText.includes("Checking if the site connection is secure")){
+    if(pageText.includes("security")){
       sendResponse({fullyLoaded: false});
     } else{
       sendResponse({fullyLoaded: true});
@@ -89,14 +89,13 @@ function getMessage(request, sender, sendResponse) {
     return true;
   }
 }
-
 function isValidURL(url) {
   return /\?id=/i.test(url) && /[a-zA-Z]-[a-zA-Z]/.test(url);
 }
 
-async function fetchArticleLinksAndSendResponse(url_fetch_criteria, url_filter, sendResponse) {
+async function fetchArticleLinksAndSendResponse(sendResponse) {
   console.log("Fetching article links...");
-  let links = await getArticleLinks(url_fetch_criteria, url_filter);
+  let links = await getArticleLinks();
   if (links && links.length > 0) {
     const storedLinksData = JSON.parse(localStorage.getItem('articleLinksData')) || [];
     links = links.filter(link => !storedLinksData.includes(link));  // mandatory to send links variable only
@@ -106,43 +105,8 @@ async function fetchArticleLinksAndSendResponse(url_fetch_criteria, url_filter, 
     sendResponse({ links: [], primary_url: window.location.href });
   }
 }
-function scrollToBottomSmoothly() {
-  const totalHeight = document.body.scrollHeight;
-  const windowHeight = window.innerHeight;
-  const scrollStep = 40; // Adjust the scroll step as needed
-  const scrollInterval = 10; // Adjust the scroll interval as needed
 
-  let currentScroll = 0;
-
-  function scroll() {
-    if (currentScroll < totalHeight) {
-      window.scrollBy(0, scrollStep);
-      currentScroll += scrollStep;
-      setTimeout(scroll, scrollInterval);
-    }
-  }
-  scroll();
-}
-
-function performPreAction(step) {
-  console.log("pre action perform");
-  switch (step.pre_action) {
-    case "scroll":
-      scrollToBottomSmoothly();
-      break;
-  }
-}
-
-function extractUrlAndParams(url) {
-  try {
-    const parts = url.split('#');
-    return parts[0];
-  } catch (error) {
-    return url;
-  }
-}
-
-async function getArticleLinks(url_fetch_criteria, url_filter) {
+async function getArticleLinks() {
   console.log("we are here to fetch all the links");
 
   let j_v=null,v = document.querySelector('script[type="application/json"][data-hypernova-key="ListingPage"]') || document.querySelector('script[type="application/json"][data-hypernova-key="CommunityPage"]');

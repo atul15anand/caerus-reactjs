@@ -1,6 +1,7 @@
 /* eslint-disable no-undef */
 /* This page only fetches urls for processing*/
 import importedLinks from './url_import.js';
+let wordsToPrevent = ["podcasts", "#guestbook", "pdf", "newsletter"];
   function getMessage(request, sender, sendResponse) {
   
     if (request.action === "getLinks") {
@@ -20,7 +21,7 @@ import importedLinks from './url_import.js';
     }
     else if(request.action === "getLoadInfo"){
       let pageText = document.body.innerText;
-      if(pageText.includes("Checking if the site connection is secure")){
+      if(pageText.includes("site connection")){
         sendResponse({fullyLoaded: false});
       } else{
         sendResponse({fullyLoaded: true});
@@ -54,7 +55,8 @@ import importedLinks from './url_import.js';
       temp = document.querySelectorAll("a");
       query = Array.from(temp).map((x) => x.href);
       links = query
-      links = Array.from(new Set(links)).filter(url => (!url.includes("flagToClose") && !url.includes("#guestbook") &&  !url.includes("pdf")));
+      links = [...new Set(links)];
+      links = links.filter(url => !wordsToPrevent.some(word => url.includes(word)));
       if (links.length) {
         console.log("after links", links);
       }

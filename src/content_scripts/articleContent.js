@@ -27,7 +27,7 @@ window.onload = function() {
     }
     timeoutValue = 15000; // 15 seconds
   }
-  
+
   setTimeout(() => {
       const content = {
         html: document.documentElement.outerHTML,
